@@ -66,9 +66,10 @@ extension ViewController: ClientAuthReporter {
   /// Presents the Client Auth screen, optionally with a redirect URL that arrived before it
   /// existed.
   ///
-  /// The URL is handed to the screen rather than acted on here: only `PortalAuth.handleRedirect`
-  /// can turn a grant into a session, and the screen is what owns the `PortalAuth` call and the
-  /// step log that goes with it. The URL is never logged — it carries a single-use grant.
+  /// The URL is handed to the screen rather than acted on here: the screen reads it with
+  /// `PortalAuth.parseRedirect`, owns the confirmation a magic link needs before it is exchanged,
+  /// and keeps the step log that goes with it. The URL is never logged — it carries a single-use
+  /// grant.
   ///
   /// Presented modally like `FirebaseAuthViewController`, and never twice: a second present on an
   /// already-presenting controller is a UIKit no-op that logs a warning, and the coordinator's
@@ -263,7 +264,7 @@ extension ViewController: ClientAuthReporter {
                 throw PortalExampleAppError.portalNotInitialized()
               }
 
-              return try await self.registerClientAuthClient(request)
+              return try await self.registerClientAuthClient(request, credentials: session)
             },
             isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal,
             onAuthenticated: { [weak self] adopted in
@@ -330,6 +331,10 @@ extension ViewController: ClientAuthReporter {
   /// reach `PortalAuth`'s replay memo — so without `clearPersistedSession()` a redirect delivered
   /// a second time would replay the login that was just signed out of.
   func handleClientAuthSignOut() {
+    // Before the first `await`: a sign-in still being exchanged must see the sign-out as soon as
+    // it finishes, not after `clearPersistedSession()` — which waits for that very exchange — and
+    // no sign-in may start until the cleanup below is done.
+    ClientAuthCoordinator.shared.beginSignOut()
     Task {
       if let portal {
         do {
@@ -342,6 +347,7 @@ extension ViewController: ClientAuthReporter {
       await self.clearPersistedClientAuthSession()
 
       self.clearClientAuthSession()
+      ClientAuthCoordinator.shared.endSignOut()
       self.signOutLocally()
       self.showStatusView(message: "\(self.successStatus) Client Auth session cleared")
     }
@@ -355,11 +361,13 @@ extension ViewController: ClientAuthReporter {
   /// session back on the next redirect.
   func handleSessionInvalidated() {
     self.logger.warning("ViewController.handleSessionInvalidated() - The backend rejected the Client Auth session")
+    ClientAuthCoordinator.shared.beginSignOut()
 
     Task {
       await self.clearPersistedClientAuthSession()
 
       self.clearClientAuthSession()
+      ClientAuthCoordinator.shared.endSignOut()
       self.signOutLocally()
       self.showStatusView(message: "\(self.failureStatus) Session invalidated - signed out")
     }
@@ -437,7 +445,16 @@ extension ViewController: ClientAuthReporter {
   /// Without it a session that authenticated through Portal has no `exchangeUserId`, and every
   /// backup, recover and funding button on this screen has nowhere to read or write. Idempotent per
   /// `clientId`, so a resumed session can re-register safely.
-  func registerClientAuthClient(_ request: ClientRegistrationRequest) async throws -> ClientRegistrationResult {
+  ///
+  /// PortalEx only registers a `clientId` for a caller that proves it owns that client: it resolves
+  /// the `Authorization: Bearer` credential through `GET /api/v3/clients/me` and answers
+  /// `403 Credential does not match clientId` when the ids differ or the header is missing. The
+  /// session's own token is that proof. It is read here, at the HTTP call, and never logged, so
+  /// adoption itself stays token-free.
+  func registerClientAuthClient(
+    _ request: ClientRegistrationRequest,
+    credentials: PortalCredentials
+  ) async throws -> ClientRegistrationResult {
     guard let config else {
       throw PortalExampleAppError.configurationNotSet()
     }
@@ -448,6 +465,8 @@ extension ViewController: ClientAuthReporter {
     self.logger.info("ViewController.registerClientAuthClient() - Registering clientId: \(request.clientId)")
 
     let apiRequest = PortalAPIRequest.custodian(url: url, method: .post, payload: request)
+    let token = try credentials.getToken()
+    apiRequest.headers["Authorization"] = "Bearer \(token)"
     let response = try await self.requests.execute(request: apiRequest, mappingInResponse: ClientRegistrationResponse.self)
 
     return ClientRegistrationResult(exchangeUserId: response.exchangeUserId)

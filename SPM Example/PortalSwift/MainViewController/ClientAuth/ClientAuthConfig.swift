@@ -181,7 +181,7 @@ struct PortalAuthParams: Equatable {
 // MARK: - PortalAuthProvider
 
 /// Holds the one `PortalAuth` the app uses, shared by the main screen (restore, clear) and the
-/// Client Auth screen (send, handleRedirect).
+/// Client Auth screen (send, read and complete redirects).
 ///
 /// Sessions are keyed by `authEnvironmentId`, so two instances would in fact share Keychain
 /// storage — a single instance just removes any chance of them disagreeing about the redirect

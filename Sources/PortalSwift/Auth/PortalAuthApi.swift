@@ -8,22 +8,24 @@
 
 import Foundation
 
-/// Thin transport for the six Client Auth endpoints — no session, storage or sequencing logic.
+/// Thin transport for the seven Client Auth endpoints — no session, storage or sequencing logic.
 ///
 /// Every call carries `x-portal-auth-environment-id`; the `Accept`/`Content-Type` headers and
-/// a fresh trace id come from `PortalAPIRequest`. No call carries a bearer except
-/// `validateTotp`, whose bearer is the short-lived `userJwt`. The transport's `onUnauthorized`
-/// hook is deliberately never installed here: a `401` from a grant exchange means the *grant*
-/// was rejected, and there is no credential yet to invalidate.
+/// a fresh trace id come from `PortalAPIRequest`. Two calls carry a bearer: `getMagicLinkDetails`,
+/// whose bearer is the magic link's grant, and `validateTotp`, whose bearer is the short-lived
+/// `userJwt`. No other call does. The transport's `onUnauthorized` hook is deliberately never
+/// installed here: a `401` from either of those two calls means the grant or the JWT was
+/// rejected, and there is no credential yet to invalidate.
 ///
 /// Transport failures propagate unchanged as `PortalRequestsError` so a rejected grant keeps
 /// the backend's own signal, with two deliberate exceptions where a status code carries an
 /// actionable meaning: a `429` from `POST /magic-links` becomes `PortalAuthError.rateLimited`,
 /// and a `400` from `POST /magic-links` or `GET /oauth/urls` whose body is `{"error": …}`
 /// becomes `PortalAuthError.accountAbstractionUnavailable(message:)` — but only when that
-/// request asked for `isAccountAbstracted: true`; any other 400 passes through. Only a malformed
-/// `{ "data": … }` envelope, or a field the flow cannot continue without, is translated to
-/// `PortalAuthError.malformedResponse`.
+/// request asked for `isAccountAbstracted: true`; any other 400 passes through. A `429` from
+/// `GET /magic-links/details` is *not* `rateLimited`: that case is about sending links, and its
+/// message would mislead. Only a malformed `{ "data": … }` envelope, or a field the flow cannot
+/// continue without, is translated to `PortalAuthError.malformedResponse`.
 final class PortalAuthApi {
   /// The production API host, also the default of `PortalAuth.init`.
   static let defaultApiHost = "api.portalhq.io"
@@ -33,6 +35,7 @@ final class PortalAuthApi {
   static let basePath = "/api/v3/auth"
   static let methodsPath = basePath + "/methods"
   static let magicLinksPath = basePath + "/magic-links"
+  static let magicLinkDetailsPath = basePath + "/magic-links/details"
   static let magicLinkValidationsPath = basePath + "/magic-links/validations"
   static let oauthUrlsPath = basePath + "/oauth/urls"
   static let oauthTokensPath = basePath + "/oauth/tokens"
@@ -174,13 +177,40 @@ final class PortalAuthApi {
     }
   }
 
-  /// `POST /magic-links/validations`: exchanges a magic-link grant.
-  func validateMagicLink(token: String) async throws -> AuthGrantValidationResponse {
-    try await self.exchangeGrant(path: Self.magicLinkValidationsPath, token: token)
+  /// `GET /magic-links/details` with `Authorization: Bearer <token>`: the email a magic link
+  /// signs in to, read without spending the link.
+  ///
+  /// The grant travels as the bearer, never in the URL. A `401` (the link has expired, was
+  /// already used, or is otherwise unusable) passes through for `PortalAuth` to map to
+  /// `grantRejected`. A `429` — the backend allows only a few reads per link — passes through
+  /// unmapped.
+  ///
+  /// - Throws: `PortalAuthError.malformedResponse(path, "email")` when the response carries no
+  ///   email, or an empty or whitespace-only one; `.malformedResponse(path, nil)` when the body
+  ///   has no `{ "data": … }` envelope or `email` is not a string; every transport error
+  ///   unchanged.
+  func getMagicLinkDetails(token: String) async throws -> MagicLinkDetails {
+    let request = try self.makeRequest(path: Self.magicLinkDetailsPath, method: .get, bearerToken: token)
+    let data = try await self.requests.execute(request: request)
+    let body = try Self.unwrap(data, path: Self.magicLinkDetailsPath, as: MagicLinkDetailsResponse.self)
+
+    guard let email = body.email, !Self.isBlank(email) else {
+      throw PortalAuthError.malformedResponse(path: Self.magicLinkDetailsPath, missing: "email")
+    }
+    return MagicLinkDetails(email: email)
   }
 
-  /// `GET /oauth/urls?redirectUrl=…[&isAccountAbstracted=true|false]`: the provider authorize
-  /// URLs. A key is present only for a provider the environment has enabled.
+  /// `POST /magic-links/validations`: exchanges a magic-link grant. The body is `{ token }` only.
+  func validateMagicLink(token: String) async throws -> AuthGrantValidationResponse {
+    try await self.exchangeGrant(path: Self.magicLinkValidationsPath, payload: GrantTokenRequest(token: token))
+  }
+
+  /// `GET /oauth/urls?redirectUrl=…&codeChallenge=…&codeChallengeMethod=S256[&isAccountAbstracted=true|false]`:
+  /// the provider authorize URLs. A key is present only for a provider the environment has enabled.
+  ///
+  /// `codeChallenge` is the `S256` challenge of the sign-in's code verifier. The backend binds
+  /// the sign-in to it, so only the matching verifier can exchange the grant. It is public by
+  /// design, so it may appear in a logged URL; the verifier never does.
   ///
   /// The `state` embedded in these URLs is single-use and shared across both providers in one
   /// response, so callers must fetch fresh per tap and never cache. A `401` here is
@@ -189,8 +219,10 @@ final class PortalAuthApi {
   ///
   /// - Throws: `PortalAuthError.accountAbstractionUnavailable` on a `400` carrying
   ///   `{"error": …}`; every other transport error unchanged.
-  func getOAuthUrls(redirectUrl: String, isAccountAbstracted: Bool?) async throws -> OAuthUrlsResponse {
+  func getOAuthUrls(redirectUrl: String, isAccountAbstracted: Bool?, codeChallenge: String) async throws -> OAuthUrlsResponse {
     var query = "?redirectUrl=" + Self.formUrlEncode(redirectUrl)
+    query += "&codeChallenge=" + Self.formUrlEncode(codeChallenge)
+    query += "&codeChallengeMethod=" + PkceCodeVerifier.challengeMethod
     if let isAccountAbstracted = isAccountAbstracted {
       query += "&isAccountAbstracted=" + (isAccountAbstracted ? "true" : "false")
     }
@@ -208,16 +240,22 @@ final class PortalAuthApi {
     return try Self.unwrap(data, path: Self.oauthUrlsPath, as: OAuthUrlsResponse.self)
   }
 
-  /// `POST /oauth/tokens`: exchanges an OAuth grant. Both providers share the endpoint.
-  func validateOAuthToken(token: String) async throws -> AuthGrantValidationResponse {
-    try await self.exchangeGrant(path: Self.oauthTokensPath, token: token)
+  /// `POST /oauth/tokens` with `{ token, codeVerifier }`: exchanges a Google or Apple grant. Both
+  /// providers share the endpoint. A verifier that does not match the sign-in's challenge is
+  /// refused with a bare `401` after the backend has spent the grant, like a spent or expired one.
+  func validateOAuthToken(token: String, codeVerifier: String) async throws -> AuthGrantValidationResponse {
+    try await self.exchangeGrant(
+      path: Self.oauthTokensPath,
+      payload: OAuthGrantTokenRequest(token: token, codeVerifier: codeVerifier)
+    )
   }
 
   /// `POST /totps/validations` with `Authorization: Bearer <userJwt>`: submits a TOTP code.
   ///
-  /// The only Client Auth call that carries a bearer, so the only one that could ever reach
-  /// `PortalRequests.onUnauthorized` — which is why that hook is never installed on this
-  /// transport. The code is posted verbatim; a wrong code does not burn the JWT.
+  /// One of the two Client Auth calls that carry a bearer (with `getMagicLinkDetails`), so one of
+  /// the two that could ever reach `PortalRequests.onUnauthorized` — which is why that hook is
+  /// never installed on this transport. The code is posted verbatim; a wrong code does not burn
+  /// the JWT.
   ///
   /// - Throws: `PortalAuthError.malformedResponse(path, "clientSessionToken")` when the
   ///   response carries no session token, or an empty or whitespace-only one — the same
@@ -248,12 +286,13 @@ final class PortalAuthApi {
 
   /// Exchanges a single-use grant for a session, or for the `userJwt` of a pending TOTP step.
   ///
-  /// Both grant endpoints take the same request and answer in the same shape, so they share
-  /// this body — including the `endUserId` guard: a completed grant must name the end user
-  /// the session belongs to, and catching it here (where the path is known) beats persisting a
-  /// session that would be rejected as incomplete on the next restore.
-  private func exchangeGrant(path: String, token: String) async throws -> AuthGrantValidationResponse {
-    let request = try self.makeRequest(path: path, method: .post, payload: GrantTokenRequest(token: token))
+  /// Both grant endpoints answer in the same shape, so they share this body — including the
+  /// `endUserId` guard: a completed grant must name the end user the session belongs to, and
+  /// catching it here (where the path is known) beats persisting a session that would be
+  /// rejected as incomplete on the next restore. Only the request body differs: the OAuth
+  /// exchange also carries the code verifier.
+  private func exchangeGrant(path: String, payload: any Codable) async throws -> AuthGrantValidationResponse {
+    let request = try self.makeRequest(path: path, method: .post, payload: payload)
     let data = try await self.requests.execute(request: request)
     let grant = try Self.unwrap(data, path: path, as: AuthGrantValidationResponse.self)
 

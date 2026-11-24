@@ -10,8 +10,9 @@ import Foundation
 @testable import PortalSwift
 import Security
 
-/// A map-backed `AuthKeychainItemStore` so `KeychainAuthSessionStorage` can be unit-tested
-/// without the simulator Keychain or an entitlement.
+/// A map-backed `AuthKeychainItemStore` so `KeychainAuthSessionStorage` and
+/// `KeychainOAuthVerifierStorage` can be unit-tested without the simulator Keychain or an
+/// entitlement.
 ///
 /// Items are keyed by `(service, account)` and hold the data plus the accessibility attribute
 /// they were written with, so a test can prove a `set` migrated an item written under an older
