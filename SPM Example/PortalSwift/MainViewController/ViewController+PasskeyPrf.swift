@@ -80,10 +80,16 @@ extension ViewController {
     }
   }
 
-  /// Leads with the cross-SDK reason, so a cancelled prompt reads as a cancel, not a failure.
+  /// Leads with the cross-SDK reason, so a cancelled prompt reads as a cancel, not a failure, and
+  /// ends with the platform's own error, which names setup problems such as a missing
+  /// `webcredentials` association.
   static func describePasskeyPrfError(_ error: Error) -> String {
     if let prfError = error as? PortalPasskeyPrfError {
-      return "\(prfError.reason.rawValue): \(prfError.errorDescription ?? "")"
+      var description = "\(prfError.reason.rawValue): \(prfError.errorDescription ?? "")"
+      if let cause = prfError.cause {
+        description += " Cause: \(cause as NSError)"
+      }
+      return description
     }
     return "\(error)"
   }

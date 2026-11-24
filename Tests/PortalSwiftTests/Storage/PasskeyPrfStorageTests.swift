@@ -583,6 +583,39 @@ final class PasskeyPrfStorageTests: XCTestCase {
     await assertPasskeyPrfError(.userCancelled) { try await self.storage.enroll() }
   }
 
+  func test_failedCeremony_logsThePlatformError_soASetupProblemIsVisible() async {
+    let logger = RecordingLogger()
+    logger.install()
+    defer { logger.uninstall() }
+    let platformError = NSError(
+      domain: ASAuthorizationError.errorDomain,
+      code: ASAuthorizationError.Code.failed.rawValue,
+      userInfo: [NSLocalizedFailureReasonErrorKey: "Application with identifier X is not associated with domain portalhq.io"]
+    )
+    api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
+    client.getResults = [.failure(PasskeyPrfCeremonyError.failed(platformError))]
+
+    await assertPasskeyPrfError(.ceremonyFailed) { try await self.storage.read() }
+
+    let errors = logger.messages(at: .error)
+    XCTAssertEqual(errors.count, 1)
+    XCTAssertTrue(errors.first?.contains("PRF_CEREMONY_FAILED") ?? false)
+    XCTAssertTrue(errors.first?.contains("is not associated with domain portalhq.io") ?? false)
+  }
+
+  func test_cancelledCeremony_logsAtInfo_notAsAnError() async {
+    let logger = RecordingLogger()
+    logger.install()
+    defer { logger.uninstall() }
+    api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
+    client.getResults = [.failure(PasskeyPrfCeremonyError.cancelled(ASAuthorizationError(.canceled)))]
+
+    await assertPasskeyPrfError(.userCancelled) { try await self.storage.read() }
+
+    XCTAssertTrue(logger.messages(at: .error).isEmpty)
+    XCTAssertTrue(logger.messages(at: .info).contains { $0.contains("PRF_USER_CANCELLED") })
+  }
+
   func test_failedCeremony_reportsAStableCode_andKeepsThePlatformMessageInTheCause() {
     let platformError = NSError(domain: "x", code: 7, userInfo: [NSLocalizedDescriptionKey: "internal detail"])
     let error = PasskeyPrfStorage.portalError(from: .failed(platformError))

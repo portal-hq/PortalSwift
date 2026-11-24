@@ -398,8 +398,31 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     do {
       return try await ceremony()
     } catch let error as PasskeyPrfCeremonyError {
-      throw Self.portalError(from: error)
+      let portalError = Self.portalError(from: error)
+      self.logCeremonyFailure(error, as: portalError)
+      throw portalError
     }
+  }
+
+  /// Logs a ceremony that did not produce a credential, with the platform's own error.
+  /// `PortalPasskeyPrfError` keeps that error only in `cause`, yet it is what explains a setup
+  /// problem, for example an app that is not associated with the relying party's domain.
+  private func logCeremonyFailure(_ error: PasskeyPrfCeremonyError, as portalError: PortalPasskeyPrfError) {
+    let message = "[PasskeyPrfStorage] \(portalError) Platform error: \(Self.describePlatformError(portalError.cause))"
+    switch error {
+    case .cancelled, .noCredentials:
+      self.logger.info(message)
+    case .noPresentationAnchor, .failed:
+      self.logger.error(message)
+    }
+  }
+
+  /// The platform error in full: its domain, code and `userInfo`, which holds the failure reason.
+  static func describePlatformError(_ cause: Error?) -> String {
+    guard let cause else {
+      return "none"
+    }
+    return String(describing: cause as NSError)
   }
 
   static func portalError(from error: PasskeyPrfCeremonyError) -> PortalPasskeyPrfError {
