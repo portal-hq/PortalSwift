@@ -189,6 +189,31 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     XCTAssertTrue(client.createRequests.isEmpty)
   }
 
+  func test_backup_sendsItsTraceId_toTheCredentialCalls() async throws {
+    client.createResults = [.success(PasskeyPrfCreateResult(
+      credentialId: PasskeyPrfFixtures.createdCredentialId,
+      transports: nil,
+      prfEnabled: true,
+      prfOutput: PasskeyPrfFixtures.createdOutput
+    ))]
+    let mpc = makeMpc()
+
+    let response = try await mpc.backup(.PasskeyPrf)
+
+    XCTAssertEqual(api.getPasskeyPrfCredentialTraceIds, [response.traceId])
+    XCTAssertEqual(api.storePasskeyPrfCredentialTraceIds, [response.traceId])
+  }
+
+  func test_recover_sendsItsTraceId_toTheCredentialRead() async throws {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let mpc = makeMpc()
+
+    _ = try await mpc.recover(.PasskeyPrf, withCipherText: "cipher-text")
+
+    XCTAssertNotNil(api.refreshClientTraceIdParam)
+    XCTAssertEqual(api.getPasskeyPrfCredentialTraceIds, [api.refreshClientTraceIdParam])
+  }
+
   func test_recover_withoutAnEnrolledPasskey_throwsCredentialNotFound() async throws {
     let mpc = makeMpc()
 

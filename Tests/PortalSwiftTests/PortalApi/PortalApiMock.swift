@@ -345,8 +345,10 @@ class PortalApiMock: PortalApiProtocol {
   /// Results returned by successive `getPasskeyPrfCredential` calls; `nil` (no record) once empty.
   var getPasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential?, Error>] = []
   var getPasskeyPrfCredentialCallsCount = 0
-  func getPasskeyPrfCredential(traceId _: String?) async throws -> PasskeyPrfCredential? {
+  var getPasskeyPrfCredentialTraceIds: [String?] = []
+  func getPasskeyPrfCredential(traceId: String?) async throws -> PasskeyPrfCredential? {
     getPasskeyPrfCredentialCallsCount += 1
+    getPasskeyPrfCredentialTraceIds.append(traceId)
     if !getPasskeyPrfCredentialResults.isEmpty {
       return try getPasskeyPrfCredentialResults.removeFirst().get()
     }
@@ -356,8 +358,10 @@ class PortalApiMock: PortalApiProtocol {
   /// Results returned by successive `storePasskeyPrfCredential` calls; echoes the body once empty.
   var storePasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential, Error>] = []
   var storePasskeyPrfCredentialParams: [PasskeyPrfCredential] = []
-  func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId _: String?) async throws -> PasskeyPrfCredential {
+  var storePasskeyPrfCredentialTraceIds: [String?] = []
+  func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId: String?) async throws -> PasskeyPrfCredential {
     storePasskeyPrfCredentialParams.append(credential)
+    storePasskeyPrfCredentialTraceIds.append(traceId)
     if !storePasskeyPrfCredentialResults.isEmpty {
       return try storePasskeyPrfCredentialResults.removeFirst().get()
     }

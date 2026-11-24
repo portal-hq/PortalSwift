@@ -12,13 +12,16 @@ import Security
 
 /// A backup storage whose encryption secret is derived on demand rather than stored.
 ///
-/// `PortalMpc` asks it for the secret with `enroll()` before the MPC backup runs, encrypts the
-/// backup shares with that secret through the password cipher, and reads it back with `read()`
-/// when recovering. Nothing is written by `write(_:)`.
+/// `PortalMpc` asks it for the secret with `enroll(traceId:)` before the MPC backup runs,
+/// encrypts the backup shares with that secret through the password cipher, and reads it back
+/// with `read(traceId:)` when recovering. Nothing is written by `write(_:)`.
 protocol PortalDerivedSecretStorage: PortalStorage {
-  /// Returns the secret to back up with, creating whatever it is derived from if needed.
-  func enroll() async throws -> String
-  /// Encrypts `value` with a secret `enroll()` returned.
+  /// Returns the secret to back up with, creating whatever it is derived from if needed. Its
+  /// Portal API calls carry `traceId`, the trace ID of the operation that asked.
+  func enroll(traceId: String?) async throws -> String
+  /// Returns the secret an existing backup was made with. Its Portal API calls carry `traceId`.
+  func read(traceId: String?) async throws -> String
+  /// Encrypts `value` with a secret `enroll(traceId:)` returned.
   func encrypt(_ value: String, withSecret secret: String) async throws -> String
 }
 
@@ -141,10 +144,23 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   /// Returns the secret to back up with, creating the client's passkey if it does not have one
   /// yet.
   public func enroll() async throws -> String {
+    try await self.enroll(traceId: nil)
+  }
+
+  /// Returns the secret an existing backup was made with. Never creates a passkey: one created
+  /// now could not decrypt a backup made earlier.
+  public func read() async throws -> String {
+    try await self.read(traceId: nil)
+  }
+
+  /// `enroll()` with the trace ID of the operation that asked, or one of its own, carried by
+  /// every Portal API call it makes.
+  func enroll(traceId: String?) async throws -> String {
     try self.assertSupported()
     let api = try self.requireApi()
+    let traceId = traceId ?? generateTraceId()
 
-    if let existing = try await api.getPasskeyPrfCredential(traceId: nil) {
+    if let existing = try await api.getPasskeyPrfCredential(traceId: traceId) {
       try self.assertRelyingParty(existing)
       return try await self.deriveSecret(existing)
     }
@@ -158,7 +174,8 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     do {
       credential = try await self.storeCredential(
         api,
-        PasskeyPrfCredential(credentialId: created.credentialId, rpId: self.relyingParty, transports: created.transports)
+        PasskeyPrfCredential(credentialId: created.credentialId, rpId: self.relyingParty, transports: created.transports),
+        traceId: traceId
       )
     } catch {
       guard Self.httpStatus(of: error) == 409 else {
@@ -167,7 +184,7 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
       // Another enrollment won. Never use the losing credential's output.
       self.logger.info("[PasskeyPrfStorage] Another enrollment stored its passkey first; deriving the secret from that one.")
       Self.zero(&created.prfOutput)
-      return try await self.read()
+      return try await self.read(traceId: traceId)
     }
 
     try self.assertRelyingParty(credential)
@@ -182,13 +199,13 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     return Self.takeSecret(&created.prfOutput)
   }
 
-  /// Returns the secret an existing backup was made with. Never creates a passkey: one created
-  /// now could not decrypt a backup made earlier.
-  public func read() async throws -> String {
+  /// `read()` with the trace ID of the operation that asked, or one of its own.
+  func read(traceId: String?) async throws -> String {
     try self.assertSupported()
     let api = try self.requireApi()
+    let traceId = traceId ?? generateTraceId()
 
-    guard let credential = try await api.getPasskeyPrfCredential(traceId: nil) else {
+    guard let credential = try await api.getPasskeyPrfCredential(traceId: traceId) else {
       throw PortalPasskeyPrfError(.credentialNotFound)
     }
 
@@ -300,14 +317,14 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   /// failure is retried, after `PasskeyPrfConstants.storeRetryDelaysMs`, rather than left to
   /// orphan the passkey that was just created. If every attempt fails, one read tells whether an
   /// earlier attempt landed after all.
-  private func storeCredential(_ api: PortalApiProtocol, _ credential: PasskeyPrfCredential) async throws -> PasskeyPrfCredential {
+  private func storeCredential(_ api: PortalApiProtocol, _ credential: PasskeyPrfCredential, traceId: String) async throws -> PasskeyPrfCredential {
     var lastError: Error?
     for attempt in 0 ..< Self.storeAttempts {
       if attempt > 0 {
         try await self.sleep(PasskeyPrfConstants.storeRetryDelaysMs[attempt - 1])
       }
       do {
-        return try await api.storePasskeyPrfCredential(credential, traceId: nil)
+        return try await api.storePasskeyPrfCredential(credential, traceId: traceId)
       } catch {
         guard Self.isTransient(error) else {
           throw error
@@ -316,7 +333,7 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
       }
     }
 
-    if let stored = try? await api.getPasskeyPrfCredential(traceId: nil) {
+    if let stored = try? await api.getPasskeyPrfCredential(traceId: traceId) {
       return stored
     }
     throw lastError ?? PortalPasskeyPrfError(.ceremonyFailed)

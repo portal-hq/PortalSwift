@@ -416,6 +416,48 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertTrue(client.getRequests.isEmpty)
   }
 
+  func test_enroll_withATraceId_sendsItOnEveryCall_includingRetriesAndTheReadBack() async throws {
+    queueCreation()
+    let failure = PortalRequestsError.internalServerError("500 - boom", url: "u")
+    api.storePasskeyPrfCredentialResults = [.failure(failure), .failure(failure), .failure(failure)]
+    api.getPasskeyPrfCredentialResults = [.success(nil), .success(record(Self.createdCredentialId))]
+
+    _ = try await storage.enroll(traceId: "trace-backup")
+
+    XCTAssertEqual(api.getPasskeyPrfCredentialTraceIds, ["trace-backup", "trace-backup"])
+    XCTAssertEqual(api.storePasskeyPrfCredentialTraceIds, ["trace-backup", "trace-backup", "trace-backup"])
+  }
+
+  func test_enroll_on409_readsTheWinningRecord_withTheSameTraceId() async throws {
+    queueCreation()
+    api.storePasskeyPrfCredentialResults = [.failure(PortalRequestsError.clientError("409 - conflict", url: "u"))]
+    api.getPasskeyPrfCredentialResults = [.success(nil), .success(record(Self.serverCredentialId))]
+
+    _ = try await storage.enroll(traceId: "trace-backup")
+
+    XCTAssertEqual(api.getPasskeyPrfCredentialTraceIds, ["trace-backup", "trace-backup"])
+    XCTAssertEqual(api.storePasskeyPrfCredentialTraceIds, ["trace-backup"])
+  }
+
+  func test_enroll_withoutATraceId_givesAllItsCallsOneGeneratedTraceId() async throws {
+    queueCreation()
+
+    _ = try await storage.enroll()
+
+    let traceIds = api.getPasskeyPrfCredentialTraceIds + api.storePasskeyPrfCredentialTraceIds
+    XCTAssertEqual(traceIds.count, 2)
+    XCTAssertNotNil(traceIds.first ?? nil)
+    XCTAssertEqual(Set(traceIds).count, 1)
+  }
+
+  func test_read_withATraceId_sendsIt() async throws {
+    api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
+
+    _ = try await storage.read(traceId: "trace-recover")
+
+    XCTAssertEqual(api.getPasskeyPrfCredentialTraceIds, ["trace-recover"])
+  }
+
   func test_enroll_whenEveryStoreAttemptFails_andNothingLanded_throwsTheLastError() async {
     queueCreation()
     let failure = PortalRequestsError.internalServerError("500 - boom", url: "u")

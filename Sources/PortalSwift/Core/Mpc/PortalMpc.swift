@@ -212,7 +212,7 @@ public class PortalMpc: PortalMpcProtocol {
       // A derived secret (Passkey PRF) is resolved before the MPC backup runs: that step
       // replaces the share pair on the server, so a passkey prompt cancelled afterwards would
       // leave the previous backup with nothing to decrypt.
-      let derivedSecret = try await self.resolveDerivedSecret(method, storage: storage)
+      let derivedSecret = try await self.resolveDerivedSecret(method, storage: storage, traceId: traceId)
 
       // Reported once the passkey prompt, if any, has been answered, so the app does not show
       // share generation while the prompt is still up.
@@ -408,7 +408,7 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.noOrganizationShareFound("No organization share found for Ethereum wallet.")
     }
 
-    let decryptionKey = try await storage.read()
+    let decryptionKey = try await self.readKey(from: storage, traceId: traceId)
     let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
 
     // Use the new formatShares function
@@ -709,7 +709,7 @@ public class PortalMpc: PortalMpcProtocol {
         Task {
           do {
             usingProgressCallback?(MpcStatus(status: .readingShare, done: false))
-            let decryptionKey = try await storage.read()
+            let decryptionKey = try await self.readKey(from: storage, traceId: traceId)
 
             usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
             let decryptedSharesString = try await storage.decrypt(cipherText, withKey: decryptionKey)
@@ -1013,7 +1013,7 @@ public class PortalMpc: PortalMpcProtocol {
 
   /// The secret a derived-secret storage (Passkey PRF) backs up with, or `nil` for methods whose
   /// storage generates and stores its own key.
-  private func resolveDerivedSecret(_ method: BackupMethods, storage: PortalStorage) async throws -> String? {
+  private func resolveDerivedSecret(_ method: BackupMethods, storage: PortalStorage, traceId: String) async throws -> String? {
     guard let derivedStorage = storage as? PortalDerivedSecretStorage else {
       if method == .PasskeyPrf {
         // The method promises a derived secret; any other storage would fall into the random
@@ -1028,11 +1028,20 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.unsupportedStorageMethod
     }
 
-    let secret = try await derivedStorage.enroll()
+    let secret = try await derivedStorage.enroll(traceId: traceId)
     guard !secret.isEmpty else {
       throw MpcError.unexpectedErrorOnBackup("\(method.rawValue) storage returned no secret to back up with.")
     }
     return secret
+  }
+
+  /// The key a backup was encrypted with. A derived-secret storage (Passkey PRF) gets the
+  /// operation's trace ID, so its Portal API calls are traced with the rest of the operation.
+  private func readKey(from storage: PortalStorage, traceId: String) async throws -> String {
+    if let derivedStorage = storage as? PortalDerivedSecretStorage {
+      return try await derivedStorage.read(traceId: traceId)
+    }
+    return try await storage.read()
   }
 
   /// Builds the `PortalMpcError` for a binary error result and, when the MPC service rejected the
