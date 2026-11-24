@@ -205,7 +205,6 @@ public class PortalMpc: PortalMpcProtocol {
         throw MpcError.unexpectedErrorOnBackup("Could not validate operations.")
       }
 
-      usingProgressCallback?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Resolved once, above the fan-out, so both curves present the same token and a broken
       // credential fails here as a PortalCredentialError before any binary round trip.
       let token = try PortalCredentialSupport.resolveToken(self.credentials)
@@ -214,6 +213,10 @@ public class PortalMpc: PortalMpcProtocol {
       // replaces the share pair on the server, so a passkey prompt cancelled afterwards would
       // leave the previous backup with nothing to decrypt.
       let derivedSecret = try await self.resolveDerivedSecret(method, storage: storage)
+
+      // Reported once the passkey prompt, if any, has been answered, so the app does not show
+      // share generation while the prompt is still up.
+      usingProgressCallback?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
       // Generate both backup shares in parallel
       let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in

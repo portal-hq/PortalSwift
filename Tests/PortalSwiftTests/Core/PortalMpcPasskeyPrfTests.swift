@@ -118,6 +118,37 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     XCTAssertEqual(mobile.mobileBackupEd25519CallsCount, 0)
   }
 
+  func test_backup_reportsGeneratingShare_onlyAfterThePasskeyAnswered() async throws {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let mpc = makeMpc()
+    var statuses: [MpcStatuses] = []
+    var promptsWhenGenerating: Int?
+
+    _ = try await mpc.backup(.PasskeyPrf) { status in
+      statuses.append(status.status)
+      if status.status == .generatingShare {
+        promptsWhenGenerating = self.client.getRequests.count
+      }
+    }
+
+    XCTAssertTrue(statuses.contains(.generatingShare))
+    XCTAssertEqual(promptsWhenGenerating, 1)
+  }
+
+  func test_backup_whenThePromptIsCancelled_neverReportsGeneratingShare() async throws {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    client.getResults = [.failure(PasskeyPrfCeremonyError.cancelled(nil))]
+    let mpc = makeMpc()
+    var statuses: [MpcStatuses] = []
+
+    _ = try? await mpc.backup(.PasskeyPrf) { status in
+      statuses.append(status.status)
+    }
+
+    XCTAssertFalse(statuses.isEmpty)
+    XCTAssertFalse(statuses.contains(.generatingShare))
+  }
+
   func test_backup_withAStorageThatDerivesNoSecret_throwsUnsupportedStorageMethod() async throws {
     let mpc = makeMpc(storage: PortalStorageSpy())
 
