@@ -719,8 +719,9 @@ public final class Portal: PortalProtocol {
   ///     - `.PasskeyPrf`: A secret derived from a passkey through the WebAuthn PRF extension
   ///       (`PasskeyPrfStorage`, iOS 18+). Not registered by default.
   ///     - `.Firebase`: Firebase authentication storage
-  ///     - `.local`: Local storage
-  ///     - `.Unknown`: Can be used for custom storage
+  ///     - `.local`: Local storage, or your own storage (wire value `CUSTOM`)
+  ///     - `.Unknown`: What Portal reports for a backup method this SDK version does not know.
+  ///       Register your own storage under `.local` instead.
   ///   - withStorage: A custom implementation of `PortalStorage` protocol that handles
   ///     the storage operations for the specified backup method.
   ///
