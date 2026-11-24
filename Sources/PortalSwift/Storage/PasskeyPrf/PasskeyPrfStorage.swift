@@ -15,14 +15,14 @@ import Security
 /// `PortalMpc` asks it for the secret with `enroll()` before the MPC backup runs, encrypts the
 /// backup shares with that secret through the password cipher, and reads it back with `read()`
 /// when recovering. Nothing is written by `write(_:)`.
-public protocol PortalDerivedSecretStorage: PortalStorage {
+protocol PortalDerivedSecretStorage: PortalStorage {
   /// Returns the secret to back up with, creating whatever it is derived from if needed.
   func enroll() async throws -> String
   /// Encrypts `value` with a secret `enroll()` returned.
   func encrypt(_ value: String, withSecret secret: String) async throws -> String
 }
 
-public extension PortalDerivedSecretStorage {
+extension PortalDerivedSecretStorage {
   /// The password cipher, keyed by the derived secret.
   func encrypt(_ value: String, withSecret secret: String) async throws -> String {
     try await self.encryption.encrypt(value, withPassword: secret)

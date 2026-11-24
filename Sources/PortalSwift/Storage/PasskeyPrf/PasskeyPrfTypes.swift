@@ -52,17 +52,17 @@ public struct PasskeyPrfUser: Equatable {
   }
 }
 
-public enum PasskeyPrfConstants {
+enum PasskeyPrfConstants {
   /// The salt every Portal SDK evaluates the passkey's PRF with: `SHA-256("portal.backup.prf.v1")`.
   ///
   /// A backup can only be recovered by evaluating the same salt, so this value is part of the
   /// backup format. It is passed to the platform as the WebAuthn PRF `eval.first` input; the
   /// platform applies the WebAuthn `SHA-256("WebAuthn PRF" || 0x00 || salt)` transform itself.
-  public static let saltHex = "e8cdf823f6ba01756590c8a09d9da3777b2ade5e40129a2f8ad8097d2945ce0f"
-  public static let defaultRelyingParty = "portalhq.io"
-  public static let defaultRelyingPartyName = "Portal"
+  static let saltHex = "e8cdf823f6ba01756590c8a09d9da3777b2ade5e40129a2f8ad8097d2945ce0f"
+  static let defaultRelyingParty = "portalhq.io"
+  static let defaultRelyingPartyName = "Portal"
   /// The first iOS release whose passkey APIs evaluate the PRF extension.
-  public static let minimumIOSMajorVersion = 18
+  static let minimumIOSMajorVersion = 18
   /// The length of a PRF output, and of the salt.
   static let outputLength = 32
   /// Waits before the second and third attempt to store the credential record, so a brief 503
