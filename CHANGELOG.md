@@ -16,18 +16,18 @@ Possible Types of changes include:
 
 ### Added
 
-- Passkey PRF backup (`BackupMethods.PasskeyPrf`, wire value `PASSKEY_PRF`, iOS 18+): backs up with a secret derived from a passkey through the WebAuthn PRF extension. Backups are interchangeable with the React Native and web SDKs for the same passkey and relying party.
-    - Register it with `portal.registerBackupMethod(.PasskeyPrf, withStorage: PasskeyPrfStorage(relyingParty: "your.domain"))`; it is not registered by default. The app must be associated with the relying party's domain through the `webcredentials` Associated Domains entitlement. The default relying party is `portalhq.io`.
-    - `portal.setPasskeyAuthenticationAnchor(_:)` sets the anchor for this storage too.
-    - The passkey is named `<custodian name> Backup (PRF)` by default. Set your own with `portal.setPasskeyPrfUser(PasskeyPrfUser(name:displayName:))` or `PasskeyPrfStorage(user:)`. The name is only used when a backup creates the passkey; a client that already has one reuses it.
-    - Passkey failures throw `PortalPasskeyPrfError`; branch on `reason` (`PRF_USER_CANCELLED`, `PRF_CREDENTIAL_NOT_FOUND`, `PRF_DECRYPT_FAILED`, ...). Network and setup errors keep their own types. An assertion answered by a passkey other than the enrolled one is rejected as `PRF_PASSKEY_UNAVAILABLE` and its output is never used.
-    - New `portal.setPasskeyPrfUser(_:)`. The new `PortalProtocol` and `PortalMpcProtocol` requirements have default implementations, so existing conformers compile unchanged.
-    - New `PortalApiProtocol` requirements `getPasskeyPrfCredential(traceId:)` and `storePasskeyPrfCredential(_:traceId:)` have default implementations, so existing conformers compile unchanged.
-    - New `BackupMethods.PasskeyPrf` case. If you switch exhaustively over `BackupMethods`, add a case for it.
+- Passkey PRF backup (`BackupMethods.PasskeyPrf`, iOS 18+): back up with a secret derived from a passkey, and recover with the same passkey on iOS, React Native, or web.
+    - Register `PasskeyPrfStorage(relyingParty:)` with `portal.registerBackupMethod(.PasskeyPrf, withStorage:)`. The app needs the relying party's domain in its `webcredentials` Associated Domains.
+    - `portal.setPasskeyPrfUser(_:)` names the passkey the first backup creates.
+    - Passkey failures throw `PortalPasskeyPrfError`; branch on its `reason`.
 
-### Fixed
+### Changed
 
-- A client whose wallets carry a share pair backed up with a method this SDK version does not know no longer fails to decode; the method is reported as `.Unknown`.
+- `BackupMethods` gains `PasskeyPrf`. If you switch exhaustively over `BackupMethods`, add it.
+
+### Improved
+
+- A client with a backup made by a method this SDK version doesn't know yet still loads; that method is reported as `.Unknown`.
 
 ## 8.2.0 - 2026-11-23
 
