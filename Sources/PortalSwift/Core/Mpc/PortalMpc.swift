@@ -917,6 +917,13 @@ public class PortalMpc: PortalMpcProtocol {
       }
     }
 
+    // `setPasskeyAuthenticationAnchor` only reaches storages registered before it, so a Passkey
+    // PRF storage registered afterwards takes the anchor the passkey storage already has. An
+    // anchor the storage was given itself is kept.
+    if #available(iOS 18, *), method == .PasskeyPrf, let prfStorage = storage as? PasskeyPrfStorage, prfStorage.anchor == nil {
+      prfStorage.anchor = (self.backupOptions[.Passkey] as? PasskeyStorage)?.anchor
+    }
+
     self.backupOptions[method] = storage
   }
 

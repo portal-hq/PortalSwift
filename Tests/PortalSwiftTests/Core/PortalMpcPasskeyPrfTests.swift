@@ -193,4 +193,36 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
 
     XCTAssertTrue(storage.anchor === window)
   }
+
+  func test_registeringAfterTheAnchorIsSet_takesThePasskeyStorageAnchor() throws {
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Passkey, withStorage: PasskeyStorage())
+    let window = UIWindow()
+    try mpc.setPasskeyAuthenticationAnchor(window)
+
+    mpc.registerBackupMethod(.PasskeyPrf, withStorage: storage)
+
+    XCTAssertTrue(storage.anchor === window)
+  }
+
+  func test_registering_keepsAnAnchorTheStorageAlreadyHas() throws {
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Passkey, withStorage: PasskeyStorage())
+    try mpc.setPasskeyAuthenticationAnchor(UIWindow())
+    let ownWindow = UIWindow()
+    storage.anchor = ownWindow
+
+    mpc.registerBackupMethod(.PasskeyPrf, withStorage: storage)
+
+    XCTAssertTrue(storage.anchor === ownWindow)
+  }
+
+  func test_registering_withoutAnAnchorAnywhere_leavesNone() {
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Passkey, withStorage: PasskeyStorage())
+
+    mpc.registerBackupMethod(.PasskeyPrf, withStorage: storage)
+
+    XCTAssertNil(storage.anchor)
+  }
 }

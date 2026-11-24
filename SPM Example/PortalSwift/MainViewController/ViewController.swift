@@ -1118,10 +1118,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       portal.setLogLevel(.debug)
       try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
       try portal.setGDriveView(self)
+      self.registerPasskeyPrfBackup(portal, relyingParty: config.relyingParty)
       // `viewDidAppear` re-applies this: the window is nil on the launch path, and a force unwrap
       // here used to crash the app when a restore beat the first layout.
-      // Registered before the anchor is set, so `setPasskeyAuthenticationAnchor` reaches it too.
-      self.registerPasskeyPrfBackup(portal, relyingParty: config.relyingParty)
       if let window = view.window {
         try portal.setPasskeyAuthenticationAnchor(window)
       }
