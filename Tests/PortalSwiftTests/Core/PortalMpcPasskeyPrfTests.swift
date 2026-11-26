@@ -239,6 +239,53 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     }
   }
 
+  func test_eject_readsTheSecret_andDecryptsWithThePasswordCipher() async throws {
+    api.client = ClientResponse.stub(
+      environment: .stub(backupWithPortalEnabled: true),
+      wallets: [
+        .stub(backupSharePairs: [.stub(backupMethod: .PasskeyPrf)], curve: .ED25519),
+        .stub(backupSharePairs: [.stub(backupMethod: .PasskeyPrf)], curve: .SECP256K1)
+      ]
+    )
+    api.getClientCipherTextReturnValue = "cipher-text"
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    encryption.decryptWithPasswordResult = UnitTestMockConstants.decodedShare
+    let mobile = MobileSpy()
+    let mpc = makeMpc(mobile: mobile)
+
+    let privateKeys = try await mpc.eject(.PasskeyPrf)
+
+    XCTAssertEqual(encryption.decryptWithPasswordParams.count, 1)
+    XCTAssertEqual(encryption.decryptWithPasswordParams.first?.value, "cipher-text")
+    XCTAssertEqual(encryption.decryptWithPasswordParams.first?.password, PasskeyPrfEncoding.hex(PasskeyPrfFixtures.assertedOutput))
+    // One prompt for the enrolled passkey, and never a new passkey.
+    XCTAssertEqual(client.getRequests.map(\.allowCredentialId), [PasskeyPrfFixtures.serverCredentialId])
+    XCTAssertTrue(client.createRequests.isEmpty)
+    XCTAssertEqual(mobile.mobileEjectWalletAndDiscontinueMPCCallsCount, 1)
+    XCTAssertNotNil(privateKeys[.eip155])
+    // The credential read is traced with the rest of the eject.
+    XCTAssertNotNil(api.prepareEjectTraceIdParam)
+    XCTAssertEqual(api.getPasskeyPrfCredentialTraceIds, [api.prepareEjectTraceIdParam])
+  }
+
+  func test_eject_withoutAPasskeyPrfBackup_throwsBeforeAnyPrompt() async {
+    // The stub client's wallets are backed up with iCloud only.
+    api.client = ClientResponse.stub(environment: .stub(backupWithPortalEnabled: true))
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let mpc = makeMpc()
+
+    do {
+      _ = try await mpc.eject(.PasskeyPrf)
+      XCTFail("Expected an error")
+    } catch {
+      guard case MpcError.unableToEjectWallet = error else {
+        return XCTFail("Expected unableToEjectWallet, got \(error)")
+      }
+    }
+    XCTAssertTrue(client.getRequests.isEmpty)
+    XCTAssertEqual(api.getPasskeyPrfCredentialCallsCount, 0)
+  }
+
   // MARK: - Cancellation
 
   func test_backup_whenTheTaskIsCancelledDuringThePrompt_cancelsThePrompt_beforeTheMpcBackupRuns() async {

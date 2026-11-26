@@ -129,6 +129,7 @@ final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
   var encryptWithPasswordParams: [(value: String, password: String)] = []
   var decryptWithPasswordParams: [(value: String, password: String)] = []
   var decryptWithPasswordError: Error?
+  var decryptWithPasswordResult = "plaintext"
   var privateKeyCallsCount = 0
 
   func decrypt(_: String, withPrivateKey _: String) async throws -> String {
@@ -141,7 +142,7 @@ final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
     if let error = decryptWithPasswordError {
       throw error
     }
-    return "plaintext"
+    return decryptWithPasswordResult
   }
 
   func encrypt(_: String) async throws -> EncryptData {
