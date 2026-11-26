@@ -15,8 +15,8 @@ import Foundation
 /// is reported the same way on every platform. Other failures keep their own types, as they do
 /// for every backup method: Portal API and network errors (for example `PortalRequestsError`),
 /// setup errors (`PasskeyPrfStorageError`, `MpcError.unsupportedStorageMethod`), and a cancelled
-/// task's own error: `CancellationError` when it is cancelled during the passkey prompt, or
-/// `URLError` with the code `.cancelled` when a Portal API call was in flight.
+/// task's own error, which is `CancellationError` or `URLError` with the code `.cancelled`
+/// depending on what was running: treat both as a cancel.
 public struct PortalPasskeyPrfError: LocalizedError, CustomStringConvertible, Equatable {
   /// Why a Passkey PRF backup could not be enrolled, read or decrypted.
   public enum Reason: String, CaseIterable, Equatable {
