@@ -721,7 +721,8 @@ public final class Portal: PortalProtocol {
   ///     - `.Firebase`: Firebase authentication storage
   ///     - `.local`: Local storage, or your own storage (wire value `CUSTOM`)
   ///     - `.Unknown`: What Portal reports for a backup method this SDK version does not know.
-  ///       Register your own storage under `.local` instead.
+  ///       Register new custom storage under `.local`. Backups already made under `.Unknown` only
+  ///       recover with `.Unknown`, so keep that registration for them.
   ///   - withStorage: A custom implementation of `PortalStorage` protocol that handles
   ///     the storage operations for the specified backup method.
   ///
