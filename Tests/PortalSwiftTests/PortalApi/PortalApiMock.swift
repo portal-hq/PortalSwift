@@ -362,7 +362,13 @@ class PortalApiMock: PortalApiProtocol {
   var storePasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential, Error>] = []
   var storePasskeyPrfCredentialParams: [PasskeyPrfCredential] = []
   var storePasskeyPrfCredentialTraceIds: [String?] = []
+  /// Awaited at the start of every `storePasskeyPrfCredential` call, so a test can hold the call.
+  var storePasskeyPrfCredentialHook: (() async -> Void)?
+  /// Whether the calling task was cancelled when each `storePasskeyPrfCredential` call ran.
+  var storePasskeyPrfCredentialSawCancellation: [Bool] = []
   func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId: String?) async throws -> PasskeyPrfCredential {
+    await storePasskeyPrfCredentialHook?()
+    storePasskeyPrfCredentialSawCancellation.append(Task.isCancelled)
     storePasskeyPrfCredentialParams.append(credential)
     storePasskeyPrfCredentialTraceIds.append(traceId)
     if !storePasskeyPrfCredentialResults.isEmpty {

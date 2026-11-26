@@ -167,6 +167,45 @@ func assertPasskeyPrfCancelled<T>(_ task: Task<T, Error>, file: StaticString = #
   }
 }
 
+/// Holds a call until the test opens it, and tells the test when a call got there.
+final class PasskeyPrfGate: @unchecked Sendable {
+  let reached: XCTestExpectation = {
+    let expectation = XCTestExpectation(description: "A call reached the gate")
+    expectation.assertForOverFulfill = false
+    return expectation
+  }()
+
+  private let lock = NSLock()
+  private var isOpen = false
+  private var waiting: CheckedContinuation<Void, Never>?
+
+  func wait() async {
+    reached.fulfill()
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      let resumeNow: Bool = lock.withLock {
+        if isOpen {
+          return true
+        }
+        waiting = continuation
+        return false
+      }
+      if resumeNow {
+        continuation.resume()
+      }
+    }
+  }
+
+  func open() {
+    let continuation: CheckedContinuation<Void, Never>? = lock.withLock {
+      isOpen = true
+      let continuation = waiting
+      waiting = nil
+      return continuation
+    }
+    continuation?.resume()
+  }
+}
+
 /// A password cipher that records how it was keyed and can fail decryption like the binary.
 final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
   var encryptWithPasswordParams: [(value: String, password: String)] = []
@@ -603,24 +642,33 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertEqual(sleeps, [250, 1000])
   }
 
-  func test_enroll_whenTheRetryWaitIsCancelled_stopsRetrying() async {
+  func test_enroll_whenCancelledWhileStoringTheRecord_stillStoresIt_includingRetries_thenStops() async {
     queueCreation()
+    var retryWaitSawCancellation: [Bool] = []
     storage = PasskeyPrfStorage(
       encryption: encryption,
       webAuthnClient: client,
       isPlatformSupported: { true },
-      sleep: { _ in throw CancellationError() }
+      sleep: { _ in retryWaitSawCancellation.append(Task.isCancelled) }
     )
     storage.api = api
+    let gate = PasskeyPrfGate()
+    api.storePasskeyPrfCredentialHook = { await gate.wait() }
+    // The first attempt fails transiently, so the store also has to wait and retry.
     api.storePasskeyPrfCredentialResults = [.failure(PortalRequestsError.internalServerError("503 - unavailable", url: "u"))]
 
-    do {
-      _ = try await storage.enroll()
-      XCTFail("Expected the cancellation")
-    } catch {
-      XCTAssertTrue(error is CancellationError, "\(error)")
-    }
-    XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 1)
+    let storage = self.storage!
+    let task = Task { try await storage.enroll() }
+    await fulfillment(of: [gate.reached], timeout: 5)
+    task.cancel()
+    gate.open()
+
+    // The passkey is bound before the backup stops, so the next backup reuses it.
+    await assertPasskeyPrfCancelled(task)
+    XCTAssertEqual(client.createRequests.count, 1)
+    XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 2)
+    XCTAssertEqual(api.storePasskeyPrfCredentialSawCancellation, [false, false])
+    XCTAssertEqual(retryWaitSawCancellation, [false])
   }
 
   func test_enroll_doesNotRetryOtherClientErrors() async {

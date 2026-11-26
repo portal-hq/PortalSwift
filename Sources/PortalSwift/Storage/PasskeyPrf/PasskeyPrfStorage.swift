@@ -172,11 +172,14 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
 
     let credential: PasskeyPrfCredential
     do {
-      credential = try await self.storeCredential(
-        api,
-        PasskeyPrfCredential(credentialId: created.credentialId, rpId: self.relyingParty, transports: created.transports),
-        traceId: traceId
-      )
+      // Once the passkey exists, binding it to the client must not be cut short by the caller
+      // cancelling: an unbound passkey is an orphan, and the next backup would create another.
+      // The store, its retries and its read-back run in a task of their own, which does not
+      // inherit the caller's cancellation.
+      let record = PasskeyPrfCredential(credentialId: created.credentialId, rpId: self.relyingParty, transports: created.transports)
+      credential = try await Task {
+        try await self.storeCredential(api, record, traceId: traceId)
+      }.value
     } catch {
       guard Self.httpStatus(of: error) == 409 else {
         throw error
@@ -186,6 +189,10 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
       Self.zero(&created.prfOutput)
       return try await self.read(traceId: traceId)
     }
+
+    // The passkey is bound now, so the next backup reuses it. A caller that cancelled meanwhile
+    // stops here, before the MPC backup.
+    try Task.checkCancellation()
 
     try self.assertRelyingParty(credential)
     if credential.credentialId != created.credentialId {
