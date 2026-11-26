@@ -64,6 +64,22 @@ protocol PasskeyPrfWebAuthnClient: AnyObject {
   func getCredential(_ request: PasskeyPrfGetRequest) async throws -> PasskeyPrfGetResult
 }
 
+/// The part of `ASAuthorizationController` a ceremony drives, so tests can stand in for the
+/// system and check when a prompt is started and cancelled.
+protocol PasskeyPrfAuthorizationControlling: AnyObject {
+  func performRequests()
+  func cancel()
+}
+
+@available(iOS 16.0, *)
+extension ASAuthorizationController: PasskeyPrfAuthorizationControlling {}
+
+/// What a ceremony's controller reports to and asks for its presentation anchor.
+typealias PasskeyPrfAuthorizationDelegate = ASAuthorizationControllerDelegate & ASAuthorizationControllerPresentationContextProviding
+
+/// Builds the controller for one request, wired to the delegate it reports to.
+typealias PasskeyPrfAuthorizationControllerFactory = (ASAuthorizationRequest, PasskeyPrfAuthorizationDelegate) -> PasskeyPrfAuthorizationControlling
+
 /// Runs the ceremonies with the platform passkey provider through `ASAuthorizationController`.
 ///
 /// The salt is handed to AuthenticationServices unhashed, as the WebAuthn `prf.eval.first`
@@ -75,8 +91,23 @@ protocol PasskeyPrfWebAuthnClient: AnyObject {
 final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
   var anchor: ASPresentationAnchor?
 
-  init(anchor: ASPresentationAnchor? = nil) {
+  private let makeController: PasskeyPrfAuthorizationControllerFactory
+
+  /// - Parameter makeController: Test seam; defaults to the system's `ASAuthorizationController`.
+  init(
+    anchor: ASPresentationAnchor? = nil,
+    makeController: @escaping PasskeyPrfAuthorizationControllerFactory = PasskeyPrfAuthorizationClient.makeSystemController
+  ) {
     self.anchor = anchor
+    self.makeController = makeController
+  }
+
+  /// The system's controller for `request`. It holds its delegate weakly.
+  static func makeSystemController(for request: ASAuthorizationRequest, delegate: PasskeyPrfAuthorizationDelegate) -> PasskeyPrfAuthorizationControlling {
+    let controller = ASAuthorizationController(authorizationRequests: [request])
+    controller.delegate = delegate
+    controller.presentationContextProvider = delegate
+    return controller
   }
 
   func createCredential(_ request: PasskeyPrfCreateRequest) async throws -> PasskeyPrfCreateResult {
@@ -163,7 +194,7 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
     }
     try Task.checkCancellation()
     let request = makeRequest()
-    let session = PasskeyPrfAuthorizationSession(anchor: anchor)
+    let session = PasskeyPrfAuthorizationSession(anchor: anchor, makeController: self.makeController)
 
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
@@ -186,13 +217,15 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
 private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, @unchecked Sendable {
   private let anchor: ASPresentationAnchor
   private var continuation: CheckedContinuation<ASAuthorizationCredential, Error>?
-  private var controller: ASAuthorizationController?
+  private let makeController: PasskeyPrfAuthorizationControllerFactory
+  private var controller: PasskeyPrfAuthorizationControlling?
   private var retainedSelf: PasskeyPrfAuthorizationSession?
   /// Set when the task running the ceremony is cancelled.
   private var isCancelled = false
 
-  init(anchor: ASPresentationAnchor) {
+  init(anchor: ASPresentationAnchor, makeController: @escaping PasskeyPrfAuthorizationControllerFactory) {
     self.anchor = anchor
+    self.makeController = makeController
   }
 
   @MainActor
@@ -202,9 +235,7 @@ private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationCon
       self.resume(.failure(CancellationError()))
       return
     }
-    let controller = ASAuthorizationController(authorizationRequests: [request])
-    controller.delegate = self
-    controller.presentationContextProvider = self
+    let controller = self.makeController(request, self)
     self.controller = controller
     self.retainedSelf = self
     controller.performRequests()

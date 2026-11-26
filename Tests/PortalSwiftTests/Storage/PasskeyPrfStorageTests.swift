@@ -106,6 +106,24 @@ final class PasskeyPrfPendingPromptClient: PasskeyPrfWebAuthnClient, @unchecked 
   }
 }
 
+/// Stands in for `ASAuthorizationController`: records what a ceremony asks of it, and keeps the
+/// delegate weakly, as the system's controller does, so a test can report an outcome to it.
+final class PasskeyPrfControllerFake: PasskeyPrfAuthorizationControlling {
+  weak var delegate: PasskeyPrfAuthorizationDelegate?
+  var performRequestsCallsCount = 0
+  var cancelCallsCount = 0
+  let performed = XCTestExpectation(description: "The ceremony started the prompt")
+
+  func performRequests() {
+    performRequestsCallsCount += 1
+    performed.fulfill()
+  }
+
+  func cancel() {
+    cancelCallsCount += 1
+  }
+}
+
 /// A password cipher that records how it was keyed and can fail decryption like the binary.
 final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
   var encryptWithPasswordParams: [(value: String, password: String)] = []
@@ -773,22 +791,96 @@ final class PasskeyPrfStorageTests: XCTestCase {
   }
 
   @MainActor
-  func test_authorizationClient_inACancelledTask_throwsCancellationError_beforePresenting() async {
-    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow())
-    let request = PasskeyPrfGetRequest(rpId: "portalhq.io", challenge: Data(count: 32), allowCredentialId: Data([1]), prfSalt: PasskeyPrfConstants.salt)
+  func test_authorizationClient_inACancelledTask_throwsCancellationError_withoutStartingThePrompt() async {
+    var controllersMade = 0
+    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow()) { _, _ in
+      controllersMade += 1
+      return PasskeyPrfControllerFake()
+    }
     // Cancelled before it runs: the test holds the main actor until it awaits the task.
     let task = Task { @MainActor in
-      try await client.getCredential(request)
+      try await client.getCredential(Self.assertionRequest)
     }
     task.cancel()
 
+    await assertCancelled(task)
+    XCTAssertEqual(controllersMade, 0)
+  }
+
+  @MainActor
+  func test_authorizationClient_whenTheTaskIsCancelledWhileThePromptIsUp_cancelsIt_andIgnoresItsLateReport() async {
+    let controller = PasskeyPrfControllerFake()
+    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow()) { _, delegate in
+      controller.delegate = delegate
+      return controller
+    }
+    let task = Task { @MainActor in
+      try await client.getCredential(Self.assertionRequest)
+    }
+    await fulfillment(of: [controller.performed], timeout: 5)
+
+    task.cancel()
+    await assertCancelled(task)
+
+    XCTAssertEqual(controller.performRequestsCallsCount, 1)
+    XCTAssertEqual(controller.cancelCallsCount, 1)
+    // The session stays alive until the controller reports its own cancel...
+    XCTAssertNotNil(controller.delegate)
+    // ...and that late report resumes nothing (a second resume would trap) and releases it.
+    controller.delegate?.authorizationController?(controller: Self.makeSystemController(), didCompleteWithError: ASAuthorizationError(.canceled))
+    await Task.yield()
+    XCTAssertNil(controller.delegate)
+  }
+
+  @MainActor
+  func test_authorizationClient_whenTheControllerReportsAnError_throwsIt_andReleasesTheSession() async {
+    let controller = PasskeyPrfControllerFake()
+    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow()) { _, delegate in
+      controller.delegate = delegate
+      return controller
+    }
+    let task = Task { @MainActor in
+      try await client.getCredential(Self.assertionRequest)
+    }
+    await fulfillment(of: [controller.performed], timeout: 5)
+
+    controller.delegate?.authorizationController?(controller: Self.makeSystemController(), didCompleteWithError: ASAuthorizationError(.canceled))
+
     do {
       _ = try await task.value
-      XCTFail("Expected CancellationError")
+      XCTFail("Expected an error")
+    } catch PasskeyPrfCeremonyError.cancelled {
+      // The user dismissed the prompt: a ceremony error, not a task cancellation.
+    } catch {
+      XCTFail("Unexpected error \(error)")
+    }
+    XCTAssertEqual(controller.cancelCallsCount, 0)
+    await Task.yield()
+    XCTAssertNil(controller.delegate)
+  }
+
+  private static let assertionRequest = PasskeyPrfGetRequest(
+    rpId: "portalhq.io",
+    challenge: Data(count: 32),
+    allowCredentialId: Data([1]),
+    prfSalt: PasskeyPrfConstants.salt
+  )
+
+  /// A system controller that is never performed, only passed where the delegate methods take one.
+  @MainActor
+  private static func makeSystemController() -> ASAuthorizationController {
+    let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: "portalhq.io")
+    return ASAuthorizationController(authorizationRequests: [provider.createCredentialAssertionRequest(challenge: Data(count: 32))])
+  }
+
+  private func assertCancelled<T>(_ task: Task<T, Error>, file: StaticString = #filePath, line: UInt = #line) async {
+    do {
+      _ = try await task.value
+      XCTFail("Expected CancellationError", file: file, line: line)
     } catch is CancellationError {
       // expected
     } catch {
-      XCTFail("Unexpected error \(error)")
+      XCTFail("Expected CancellationError, got \(error)", file: file, line: line)
     }
   }
 
