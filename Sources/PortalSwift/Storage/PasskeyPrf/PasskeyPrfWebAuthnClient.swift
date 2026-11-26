@@ -192,12 +192,17 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
     guard let anchor = self.anchor else {
       throw PasskeyPrfCeremonyError.noPresentationAnchor
     }
-    try Task.checkCancellation()
     let request = makeRequest()
     let session = PasskeyPrfAuthorizationSession(anchor: anchor, makeController: self.makeController)
 
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
+        // Checked once the cancellation handler is installed: a cancel before this point is
+        // seen here and the prompt never starts; one after it finds a running controller.
+        if Task.isCancelled {
+          continuation.resume(throwing: CancellationError())
+          return
+        }
         session.start(with: request, continuation: continuation)
       }
     } onCancel: {
@@ -220,8 +225,6 @@ private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationCon
   private let makeController: PasskeyPrfAuthorizationControllerFactory
   private var controller: PasskeyPrfAuthorizationControlling?
   private var retainedSelf: PasskeyPrfAuthorizationSession?
-  /// Set when the task running the ceremony is cancelled.
-  private var isCancelled = false
 
   init(anchor: ASPresentationAnchor, makeController: @escaping PasskeyPrfAuthorizationControllerFactory) {
     self.anchor = anchor
@@ -231,10 +234,6 @@ private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationCon
   @MainActor
   func start(with request: ASAuthorizationRequest, continuation: CheckedContinuation<ASAuthorizationCredential, Error>) {
     self.continuation = continuation
-    guard !self.isCancelled else {
-      self.resume(.failure(CancellationError()))
-      return
-    }
     let controller = self.makeController(request, self)
     self.controller = controller
     self.retainedSelf = self
@@ -246,9 +245,8 @@ private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationCon
   /// report, so the controller is not released while it dismisses the prompt.
   @MainActor
   func cancel() {
-    self.isCancelled = true
     guard let controller = self.controller else {
-      // Not started yet: `start` sees the flag and never presents.
+      // The prompt already finished, or never started because the task was cancelled first.
       return
     }
     controller.cancel()
