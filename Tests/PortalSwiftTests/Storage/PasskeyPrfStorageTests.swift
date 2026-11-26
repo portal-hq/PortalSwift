@@ -46,6 +46,66 @@ final class PasskeyPrfWebAuthnClientFake: PasskeyPrfWebAuthnClient {
   }
 }
 
+/// A WebAuthn client whose assertion stays "on screen", like the system prompt, until the calling
+/// task is cancelled or the test answers it.
+final class PasskeyPrfPendingPromptClient: PasskeyPrfWebAuthnClient, @unchecked Sendable {
+  var anchor: ASPresentationAnchor?
+
+  /// Fulfilled when the prompt is up.
+  let shown = XCTestExpectation(description: "The passkey prompt is shown")
+  /// Fulfilled when cancelling the calling task reaches the prompt.
+  let cancelled = XCTestExpectation(description: "Task cancellation reached the passkey prompt")
+
+  private let lock = NSLock()
+  private var isCancelled = false
+  private var isAnswered = false
+  private var pending: CheckedContinuation<Void, Never>?
+
+  func createCredential(_: PasskeyPrfCreateRequest) async throws -> PasskeyPrfCreateResult {
+    throw PasskeyPrfCeremonyError.failed(nil)
+  }
+
+  func getCredential(_ request: PasskeyPrfGetRequest) async throws -> PasskeyPrfGetResult {
+    shown.fulfill()
+    await withTaskCancellationHandler {
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        self.lock.lock()
+        let isDone = self.isCancelled || self.isAnswered
+        if !isDone {
+          self.pending = continuation
+        }
+        self.lock.unlock()
+        if isDone {
+          continuation.resume()
+        }
+      }
+    } onCancel: {
+      self.lock.lock()
+      self.isCancelled = true
+      let continuation = self.pending
+      self.pending = nil
+      self.lock.unlock()
+      self.cancelled.fulfill()
+      continuation?.resume()
+    }
+
+    if lock.withLock({ isCancelled }) {
+      throw CancellationError()
+    }
+    return PasskeyPrfGetResult(credentialId: request.allowCredentialId, prfOutput: PasskeyPrfFixtures.assertedOutput)
+  }
+
+  /// The "user" answers the prompt. Does nothing once the prompt was cancelled.
+  func answer() {
+    lock.lock()
+    isAnswered = true
+    let continuation = pending
+    pending = nil
+    lock.unlock()
+    continuation?.resume()
+  }
+}
+
 /// A password cipher that records how it was keyed and can fail decryption like the binary.
 final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
   var encryptWithPasswordParams: [(value: String, password: String)] = []

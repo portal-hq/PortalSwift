@@ -705,12 +705,15 @@ public class PortalMpc: PortalMpcProtocol {
       // here instead of after the user has been prompted for their backup.
       let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
+      // Read in the caller's task, not in the unstructured one below: that one does not inherit
+      // cancellation, so a cancelled recovery would leave a storage that waits on the user (the
+      // Passkey PRF prompt) waiting, and carry on once the user answered.
+      usingProgressCallback?(MpcStatus(status: .readingShare, done: false))
+      let decryptionKey = try await self.readKey(from: storage, traceId: traceId)
+
       let recoverResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
           do {
-            usingProgressCallback?(MpcStatus(status: .readingShare, done: false))
-            let decryptionKey = try await self.readKey(from: storage, traceId: traceId)
-
             usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
             let decryptedSharesString = try await storage.decrypt(cipherText, withKey: decryptionKey)
             usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))

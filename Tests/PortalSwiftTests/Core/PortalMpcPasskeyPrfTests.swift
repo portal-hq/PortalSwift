@@ -239,6 +239,62 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     }
   }
 
+  // MARK: - Cancellation
+
+  func test_backup_whenTheTaskIsCancelledDuringThePrompt_cancelsThePrompt_beforeTheMpcBackupRuns() async {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let prompt = PasskeyPrfPendingPromptClient()
+    let mobile = MobileSpy()
+    let mpc = makeMpc(
+      mobile: mobile,
+      storage: PasskeyPrfStorage(encryption: encryption, webAuthnClient: prompt, isPlatformSupported: { true })
+    )
+
+    let task = Task { try await mpc.backup(.PasskeyPrf) }
+    await fulfillment(of: [prompt.shown], timeout: 5)
+    task.cancel()
+    await fulfillment(of: [prompt.cancelled], timeout: 5)
+    // Unblocks the task if the cancellation never arrived, so a regression fails instead of hanging.
+    prompt.answer()
+
+    await assertCancelled(task)
+    XCTAssertEqual(mobile.mobileBackupCallsCount, 0)
+    XCTAssertEqual(mobile.mobileBackupEd25519CallsCount, 0)
+  }
+
+  func test_recover_whenTheTaskIsCancelledDuringThePrompt_cancelsThePrompt_andRecoversNothing() async {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let prompt = PasskeyPrfPendingPromptClient()
+    let mobile = MobileSpy()
+    let mpc = makeMpc(
+      mobile: mobile,
+      storage: PasskeyPrfStorage(encryption: encryption, webAuthnClient: prompt, isPlatformSupported: { true })
+    )
+
+    let task = Task { try await mpc.recover(.PasskeyPrf, withCipherText: "cipher-text") }
+    await fulfillment(of: [prompt.shown], timeout: 5)
+    task.cancel()
+    await fulfillment(of: [prompt.cancelled], timeout: 5)
+    // Unblocks the task if the cancellation never arrived, so a regression fails instead of hanging.
+    prompt.answer()
+
+    await assertCancelled(task)
+    XCTAssertTrue(encryption.decryptWithPasswordParams.isEmpty)
+    XCTAssertEqual(mobile.mobileRecoverSigningSecp256k1CallsCount, 0)
+    XCTAssertEqual(mobile.mobileRecoverSigningEd25519CallsCount, 0)
+  }
+
+  private func assertCancelled<T>(_ task: Task<T, Error>, file: StaticString = #filePath, line: UInt = #line) async {
+    do {
+      _ = try await task.value
+      XCTFail("Expected CancellationError", file: file, line: line)
+    } catch is CancellationError {
+      // expected
+    } catch {
+      XCTFail("Expected CancellationError, got \(error)", file: file, line: line)
+    }
+  }
+
   // MARK: - Anchor
 
   func test_setPasskeyAuthenticationAnchor_setsThePasskeyPrfStorageAnchor() throws {
