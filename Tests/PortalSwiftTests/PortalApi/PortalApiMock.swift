@@ -176,8 +176,11 @@ class PortalApiMock: PortalApiProtocol {
   var storeClientCipherTextReturnValue: Bool?
   var storeClientCipherTextCallsCount: Int = 0
   var storeClientCipherTextTraceIdParam: String?
-  func storeClientCipherText(_: String, cipherText _: String, traceId: String?) async throws -> Bool {
+  /// The `(backupSharePairId, cipherText)` of every call, in order.
+  var storeClientCipherTextParams: [(backupSharePairId: String, cipherText: String)] = []
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String, traceId: String?) async throws -> Bool {
     storeClientCipherTextCallsCount += 1
+    storeClientCipherTextParams.append((backupSharePairId, cipherText))
     storeClientCipherTextTraceIdParam = traceId
     return storeClientCipherTextReturnValue ?? false
   }

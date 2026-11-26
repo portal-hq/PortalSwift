@@ -98,8 +98,13 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
 
     let response = try await mpc.backup(.PasskeyPrf)
 
-    XCTAssertGreaterThanOrEqual(api.storeClientCipherTextCallsCount, 1)
-    XCTAssertEqual(api.storeClientCipherTextCallsCount, response.shareIds.count)
+    // Every backup share pair gets the cipher text the password cipher produced from the PRF
+    // secret, the same one the backup returns.
+    XCTAssertFalse(response.shareIds.isEmpty)
+    XCTAssertEqual(api.storeClientCipherTextParams.map(\.backupSharePairId).sorted(), response.shareIds.sorted())
+    XCTAssertEqual(Set(api.storeClientCipherTextParams.map(\.cipherText)), ["password-cipher-text"])
+    XCTAssertEqual(response.cipherText, "password-cipher-text")
+    XCTAssertEqual(encryption.privateKeyCallsCount, 0)
   }
 
   func test_backup_whenThePromptIsCancelled_failsBeforeTheMpcBackupRuns() async throws {
