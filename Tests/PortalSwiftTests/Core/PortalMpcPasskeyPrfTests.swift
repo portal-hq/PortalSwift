@@ -291,6 +291,57 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     XCTAssertEqual(api.getPasskeyPrfCredentialCallsCount, 0)
   }
 
+  func test_recover_withPasskeyPrfStorageRegisteredForAnotherMethod_throwsUnsupportedStorageMethod_withoutAPrompt() async {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Password, withStorage: storage)
+
+    do {
+      _ = try await mpc.recover(.Password, withCipherText: "cipher-text")
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? MpcError, MpcError.unsupportedStorageMethod)
+    }
+    XCTAssertTrue(client.getRequests.isEmpty)
+    XCTAssertEqual(api.getPasskeyPrfCredentialCallsCount, 0)
+  }
+
+  func test_recover_withAStorageThatDerivesNoSecret_throwsUnsupportedStorageMethod() async {
+    let otherStorage = PortalStorageSpy()
+    let mpc = makeMpc(storage: otherStorage)
+
+    do {
+      _ = try await mpc.recover(.PasskeyPrf, withCipherText: "cipher-text")
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? MpcError, MpcError.unsupportedStorageMethod)
+    }
+    XCTAssertEqual(otherStorage.readCallsCount, 0)
+  }
+
+  func test_eject_withPasskeyPrfStorageRegisteredForAnotherMethod_throwsUnsupportedStorageMethod_withoutAPrompt() async {
+    api.client = ClientResponse.stub(
+      environment: .stub(backupWithPortalEnabled: true),
+      wallets: [
+        .stub(backupSharePairs: [.stub(backupMethod: .Password)], curve: .ED25519),
+        .stub(backupSharePairs: [.stub(backupMethod: .Password)], curve: .SECP256K1)
+      ]
+    )
+    api.getClientCipherTextReturnValue = "cipher-text"
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Password, withStorage: storage)
+
+    do {
+      _ = try await mpc.eject(.Password)
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? MpcError, MpcError.unsupportedStorageMethod)
+    }
+    XCTAssertTrue(client.getRequests.isEmpty)
+    XCTAssertTrue(encryption.decryptWithPasswordParams.isEmpty)
+  }
+
   // MARK: - Cancellation
 
   func test_backup_whenTheTaskIsCancelledDuringThePrompt_cancelsThePrompt_beforeTheMpcBackupRuns() async {
