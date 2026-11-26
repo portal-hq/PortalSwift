@@ -875,6 +875,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Back up to iCloud
   ///     - `.Password`: Back up with password protection
   ///     - `.Passkey`: Back up with passkey authentication
+  ///     - `.PasskeyPrf`: Back up with a secret derived from a passkey (iOS 18.4+)
   ///     - `.local`: Back up to local storage
   ///   - usingProgressCallback: Optional callback to track the backup progress.
   ///     The callback receives an `MpcStatus` object containing:
@@ -996,6 +997,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Authenticate using iCloud backup
   ///     - `.Password`: Authenticate using password
   ///     - `.Passkey`: Authenticate using passkey
+  ///     - `.PasskeyPrf`: Authenticate using the Passkey PRF passkey (iOS 18.4+)
   ///     - `.local`: Authenticate using local backup
   ///   - withCipherText: Optional cipher text from a previous backup. Required for some backup methods.
   ///   - andOrganizationBackupShare: Optional backup share provided by the organization.
@@ -1043,6 +1045,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Authenticate using iCloud backup
   ///     - `.Password`: Authenticate using password
   ///     - `.Passkey`: Authenticate using passkey
+  ///     - `.PasskeyPrf`: Authenticate using the Passkey PRF passkey (iOS 18.4+)
   ///     - `.local`: Authenticate using local backup
   ///   - withCipherText: Optional cipher text from a previous backup.
   ///   - andOrganizationBackupShare: Optional backup share provided by the organization for EVM chains.
@@ -1087,6 +1090,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Recover from iCloud backup
   ///     - `.Password`: Recover using password
   ///     - `.Passkey`: Recover using passkey
+  ///     - `.PasskeyPrf`: Recover using the Passkey PRF passkey (iOS 18.4+)
   ///     - `.local`: Recover from local backup
   ///   - withCipherText: Optional cipher text from a previous backup. Required for some backup methods.
   ///   - usingProgressCallback: Optional callback to track the recovery progress.
@@ -1142,6 +1146,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Store in iCloud
   ///     - `.Password`: Protect with password
   ///     - `.Passkey`: Protect with passkey
+  ///     - `.PasskeyPrf`: Protect with a secret derived from a passkey (iOS 18.4+)
   ///     - `.local`: Store locally
   ///   - usingProgressCallback: Optional callback to track the wallet creation progress.
   ///     The callback receives an `MpcStatus` object containing:
