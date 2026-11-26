@@ -14,8 +14,9 @@ import Foundation
 /// The reasons and their raw values match the React Native and web SDKs, so the same failure
 /// is reported the same way on every platform. Other failures keep their own types, as they do
 /// for every backup method: Portal API and network errors (for example `PortalRequestsError`),
-/// setup errors (`PasskeyPrfStorageError`, `MpcError.unsupportedStorageMethod`), and
-/// `CancellationError` for a cancelled task.
+/// setup errors (`PasskeyPrfStorageError`, `MpcError.unsupportedStorageMethod`), and a cancelled
+/// task's own error: `CancellationError` when it is cancelled during the passkey prompt, or
+/// `URLError` with the code `.cancelled` when a Portal API call was in flight.
 public struct PortalPasskeyPrfError: LocalizedError, CustomStringConvertible, Equatable {
   /// Why a Passkey PRF backup could not be enrolled, read or decrypted.
   public enum Reason: String, CaseIterable, Equatable {
