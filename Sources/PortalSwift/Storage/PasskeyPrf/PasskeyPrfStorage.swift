@@ -62,9 +62,9 @@ public enum PasskeyPrfStorageError: LocalizedError, Equatable {
 /// never stored, by this storage or by Portal. Portal stores only which passkey the client
 /// enrolled (`PasskeyPrfCredential`).
 ///
-/// Requires iOS 18, an `ASPresentationAnchor`, and an app associated with the relying party's
+/// Requires iOS 18.4, an `ASPresentationAnchor`, and an app associated with the relying party's
 /// domain through the `webcredentials` Associated Domains entitlement.
-@available(iOS 18.0, *)
+@available(iOS 18.4, *)
 public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   public weak var api: PortalApiProtocol?
   public let encryption: PortalEncryptionProtocol
@@ -262,12 +262,10 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
    * Internal functions
    *******************************************/
 
-  /// iOS 18 is required for the PRF extension; a device that does not run it never reaches
+  /// Passkey PRF needs `PasskeyPrfConstants.minimumIOSVersion`; a device below it never reaches
   /// this type. Kept as a function so the check stays in one place if the floor moves.
   static func platformSupportsPrf() -> Bool {
-    ProcessInfo.processInfo.isOperatingSystemAtLeast(
-      OperatingSystemVersion(majorVersion: PasskeyPrfConstants.minimumIOSMajorVersion, minorVersion: 0, patchVersion: 0)
-    )
+    ProcessInfo.processInfo.isOperatingSystemAtLeast(PasskeyPrfConstants.minimumIOSVersion)
   }
 
   static func normalizeRelyingParty(_ value: String?) -> String {

@@ -11,7 +11,7 @@ import AuthenticationServices
 import XCTest
 
 /// How `PortalMpc` routes `BackupMethods.PasskeyPrf` through the password cipher.
-@available(iOS 18.0, *)
+@available(iOS 18.4, *)
 final class PortalMpcPasskeyPrfTests: XCTestCase {
   private var api: PortalApiMock!
   private var client: PasskeyPrfWebAuthnClientFake!

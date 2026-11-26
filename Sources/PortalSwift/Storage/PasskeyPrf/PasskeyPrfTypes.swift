@@ -61,8 +61,10 @@ enum PasskeyPrfConstants {
   static let saltHex = "e8cdf823f6ba01756590c8a09d9da3777b2ade5e40129a2f8ad8097d2945ce0f"
   static let defaultRelyingParty = "portalhq.io"
   static let defaultRelyingPartyName = "Portal"
-  /// The first iOS release whose passkey APIs evaluate the PRF extension.
-  static let minimumIOSMajorVersion = 18
+  /// The first iOS release Passkey PRF is supported on. iOS 18.0 added the PRF extension, but
+  /// until 18.4 a passkey used from another device returned a different output than the same
+  /// passkey used on the device, so a backup made that way could not be decrypted later.
+  static let minimumIOSVersion = OperatingSystemVersion(majorVersion: 18, minorVersion: 4, patchVersion: 0)
   /// The length of a PRF output, and of the salt.
   static let outputLength = 32
   /// Waits before the second and third attempt to store the credential record, so a brief 503

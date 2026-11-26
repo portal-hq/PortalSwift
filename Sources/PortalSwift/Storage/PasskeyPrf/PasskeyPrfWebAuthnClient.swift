@@ -71,7 +71,7 @@ protocol PasskeyPrfWebAuthnClient: AnyObject {
 /// (`SHA-256("WebAuthn PRF" || 0x00 || salt)`) before the credential's PRF is evaluated, exactly
 /// as WebKit and Chromium rely on when they pass a page's `eval.first` through the same API, so
 /// the output matches what browsers and Android return for the same passkey and salt.
-@available(iOS 18.0, *)
+@available(iOS 18.4, *)
 final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
   var anchor: ASPresentationAnchor?
 
@@ -182,7 +182,7 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
 ///
 /// `@unchecked Sendable` because the task cancellation handler hands it to the main actor; all
 /// of its state is read and written on the main thread, where the controller calls its delegate.
-@available(iOS 18.0, *)
+@available(iOS 18.4, *)
 private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, @unchecked Sendable {
   private let anchor: ASPresentationAnchor
   private var continuation: CheckedContinuation<ASAuthorizationCredential, Error>?

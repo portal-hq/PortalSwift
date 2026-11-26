@@ -923,7 +923,7 @@ public class PortalMpc: PortalMpcProtocol {
     // `setPasskeyAuthenticationAnchor` only reaches storages registered before it, so a Passkey
     // PRF storage registered afterwards takes the anchor the passkey storage already has. An
     // anchor the storage was given itself is kept.
-    if #available(iOS 18, *), method == .PasskeyPrf, let prfStorage = storage as? PasskeyPrfStorage, prfStorage.anchor == nil {
+    if #available(iOS 18.4, *), method == .PasskeyPrf, let prfStorage = storage as? PasskeyPrfStorage, prfStorage.anchor == nil {
       prfStorage.anchor = (self.backupOptions[.Passkey] as? PasskeyStorage)?.anchor
     }
 
@@ -960,7 +960,7 @@ public class PortalMpc: PortalMpcProtocol {
   }
 
   /// Sets the anchor on every registered passkey storage: the enclave `PasskeyStorage` and, on
-  /// iOS 18, a `PasskeyPrfStorage`. Throws only when neither is registered.
+  /// iOS 18.4 and later, a `PasskeyPrfStorage`. Throws only when neither is registered.
   @available(iOS 16, *)
   public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
     var didSetAnchor = false
@@ -970,7 +970,7 @@ public class PortalMpc: PortalMpcProtocol {
       didSetAnchor = true
     }
 
-    if #available(iOS 18, *), let storage = backupOptions[.PasskeyPrf] as? PasskeyPrfStorage {
+    if #available(iOS 18.4, *), let storage = backupOptions[.PasskeyPrf] as? PasskeyPrfStorage {
       storage.anchor = anchor
       didSetAnchor = true
     }
@@ -1000,7 +1000,7 @@ public class PortalMpc: PortalMpcProtocol {
   }
 
   public func setPasskeyPrfUser(_ user: PasskeyPrfUser?) throws {
-    guard #available(iOS 18, *), let storage = backupOptions[.PasskeyPrf] as? PasskeyPrfStorage else {
+    guard #available(iOS 18.4, *), let storage = backupOptions[.PasskeyPrf] as? PasskeyPrfStorage else {
       throw MpcError.backupMethodNotRegistered("Could not find an instance of `PasskeyPrfStorage`. Please use `portal.registerBackupMethod()`")
     }
 

@@ -79,7 +79,7 @@ final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
 
 // MARK: - Tests
 
-@available(iOS 18.0, *)
+@available(iOS 18.4, *)
 final class PasskeyPrfStorageTests: XCTestCase {
   static let createdOutput = PasskeyPrfFixtures.createdOutput
   static let assertedOutput = PasskeyPrfFixtures.assertedOutput
@@ -196,6 +196,13 @@ final class PasskeyPrfStorageTests: XCTestCase {
   func test_storeRetryDelays_matchTheOtherSdks() {
     XCTAssertEqual(PasskeyPrfConstants.storeRetryDelaysMs, [250, 1000])
     XCTAssertEqual(PasskeyPrfStorage.storeAttempts, 3)
+  }
+
+  /// 18.4, not 18.0: before it a passkey used from another device returned a different PRF
+  /// output than the same passkey used on the device.
+  func test_minimumIOSVersion_is18_4() {
+    let minimum = PasskeyPrfConstants.minimumIOSVersion
+    XCTAssertEqual([minimum.majorVersion, minimum.minorVersion, minimum.patchVersion], [18, 4, 0])
   }
 
   func test_relyingParty_isTrimmedAndLowercased_withDefaults() {

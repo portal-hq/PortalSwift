@@ -15,9 +15,9 @@ import UIKit
 
 @available(iOS 16.0, *)
 extension ViewController {
-  /// The PRF extension needs iOS 18; earlier devices keep the buttons disabled.
+  /// Passkey PRF needs iOS 18.4; earlier devices keep the buttons disabled.
   var isPasskeyPrfAvailable: Bool {
-    if #available(iOS 18.0, *) {
+    if #available(iOS 18.4, *) {
       return true
     }
     return false
@@ -26,7 +26,7 @@ extension ViewController {
   /// Registers `PasskeyPrfStorage` under the same relying party the enclave passkey uses, which
   /// this app is associated with through its `webcredentials` entitlement.
   func registerPasskeyPrfBackup(_ portal: Portal, relyingParty: String) {
-    guard #available(iOS 18.0, *) else {
+    guard #available(iOS 18.4, *) else {
       return
     }
     portal.registerBackupMethod(.PasskeyPrf, withStorage: PasskeyPrfStorage(relyingParty: relyingParty))
