@@ -124,6 +124,49 @@ final class PasskeyPrfControllerFake: PasskeyPrfAuthorizationControlling {
   }
 }
 
+/// Waits for `task` for at most `timeout` seconds and returns its result, or `nil` if it never
+/// finished. A continuation nobody resumes then fails the test instead of hanging the run.
+func passkeyPrfResult<T>(of task: Task<T, Error>, timeout: TimeInterval = 5) async -> Swift.Result<T, Error>? {
+  let box = PasskeyPrfResultBox<T>()
+  let finished = XCTestExpectation(description: "The task finished")
+  Task {
+    box.set(await task.result)
+    finished.fulfill()
+  }
+  guard await XCTWaiter().fulfillment(of: [finished], timeout: timeout) == .completed else {
+    return nil
+  }
+  return box.get()
+}
+
+/// Holds a task's result between the task that awaits it and the test that reads it.
+final class PasskeyPrfResultBox<T>: @unchecked Sendable {
+  private let lock = NSLock()
+  private var result: Swift.Result<T, Error>?
+
+  func set(_ result: Swift.Result<T, Error>) {
+    lock.withLock { self.result = result }
+  }
+
+  func get() -> Swift.Result<T, Error>? {
+    lock.withLock { result }
+  }
+}
+
+/// Fails unless `task` ends with `CancellationError` within the timeout.
+func assertPasskeyPrfCancelled<T>(_ task: Task<T, Error>, file: StaticString = #filePath, line: UInt = #line) async {
+  switch await passkeyPrfResult(of: task) {
+  case .none:
+    XCTFail("The task did not finish", file: file, line: line)
+  case .success:
+    XCTFail("Expected CancellationError", file: file, line: line)
+  case let .failure(error) where error is CancellationError:
+    break
+  case let .failure(error):
+    XCTFail("Expected CancellationError, got \(error)", file: file, line: line)
+  }
+}
+
 /// A password cipher that records how it was keyed and can fail decryption like the binary.
 final class PasskeyPrfEncryptionFake: PortalEncryptionProtocol {
   var encryptWithPasswordParams: [(value: String, password: String)] = []
@@ -804,7 +847,7 @@ final class PasskeyPrfStorageTests: XCTestCase {
     }
     task.cancel()
 
-    await assertCancelled(task)
+    await assertPasskeyPrfCancelled(task)
     XCTAssertEqual(controllersMade, 0)
   }
 
@@ -821,7 +864,7 @@ final class PasskeyPrfStorageTests: XCTestCase {
     await fulfillment(of: [controller.performed], timeout: 5)
 
     task.cancel()
-    await assertCancelled(task)
+    await assertPasskeyPrfCancelled(task)
 
     XCTAssertEqual(controller.performRequestsCallsCount, 1)
     XCTAssertEqual(controller.cancelCallsCount, 1)
@@ -847,13 +890,11 @@ final class PasskeyPrfStorageTests: XCTestCase {
 
     controller.delegate?.authorizationController?(controller: Self.makeSystemController(), didCompleteWithError: ASAuthorizationError(.canceled))
 
-    do {
-      _ = try await task.value
-      XCTFail("Expected an error")
-    } catch PasskeyPrfCeremonyError.cancelled {
-      // The user dismissed the prompt: a ceremony error, not a task cancellation.
-    } catch {
-      XCTFail("Unexpected error \(error)")
+    switch await passkeyPrfResult(of: task) {
+    case .failure(PasskeyPrfCeremonyError.cancelled):
+      break // The user dismissed the prompt: a ceremony error, not a task cancellation.
+    case let result:
+      XCTFail("Expected PasskeyPrfCeremonyError.cancelled, got \(String(describing: result))")
     }
     XCTAssertEqual(controller.cancelCallsCount, 0)
     await Task.yield()
@@ -872,17 +913,6 @@ final class PasskeyPrfStorageTests: XCTestCase {
   private static func makeSystemController() -> ASAuthorizationController {
     let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: "portalhq.io")
     return ASAuthorizationController(authorizationRequests: [provider.createCredentialAssertionRequest(challenge: Data(count: 32))])
-  }
-
-  private func assertCancelled<T>(_ task: Task<T, Error>, file: StaticString = #filePath, line: UInt = #line) async {
-    do {
-      _ = try await task.value
-      XCTFail("Expected CancellationError", file: file, line: line)
-    } catch is CancellationError {
-      // expected
-    } catch {
-      XCTFail("Expected CancellationError, got \(error)", file: file, line: line)
-    }
   }
 
   // MARK: - Cipher

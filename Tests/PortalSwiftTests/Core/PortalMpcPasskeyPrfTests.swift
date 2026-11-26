@@ -309,7 +309,7 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     // Unblocks the task if the cancellation never arrived, so a regression fails instead of hanging.
     prompt.answer()
 
-    await assertCancelled(task)
+    await assertPasskeyPrfCancelled(task)
     XCTAssertEqual(mobile.mobileBackupCallsCount, 0)
     XCTAssertEqual(mobile.mobileBackupEd25519CallsCount, 0)
   }
@@ -330,21 +330,10 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     // Unblocks the task if the cancellation never arrived, so a regression fails instead of hanging.
     prompt.answer()
 
-    await assertCancelled(task)
+    await assertPasskeyPrfCancelled(task)
     XCTAssertTrue(encryption.decryptWithPasswordParams.isEmpty)
     XCTAssertEqual(mobile.mobileRecoverSigningSecp256k1CallsCount, 0)
     XCTAssertEqual(mobile.mobileRecoverSigningEd25519CallsCount, 0)
-  }
-
-  private func assertCancelled<T>(_ task: Task<T, Error>, file: StaticString = #filePath, line: UInt = #line) async {
-    do {
-      _ = try await task.value
-      XCTFail("Expected CancellationError", file: file, line: line)
-    } catch is CancellationError {
-      // expected
-    } catch {
-      XCTFail("Expected CancellationError, got \(error)", file: file, line: line)
-    }
   }
 
   // MARK: - Anchor
