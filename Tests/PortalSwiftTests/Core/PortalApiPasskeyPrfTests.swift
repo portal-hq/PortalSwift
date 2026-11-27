@@ -143,5 +143,12 @@ final class PortalApiPasskeyPrfTests: XCTestCase {
     } catch {
       XCTAssertEqual(error as? PasskeyPrfStorageError, .apiUnsupported)
     }
+
+    do {
+      _ = try await legacy.storePasskeyPrfCredential(PasskeyPrfCredential(credentialId: "AQID", rpId: "portalhq.io"), traceId: nil)
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? PasskeyPrfStorageError, .apiUnsupported)
+    }
   }
 }

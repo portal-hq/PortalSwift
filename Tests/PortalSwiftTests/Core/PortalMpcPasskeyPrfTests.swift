@@ -181,6 +181,75 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     XCTAssertTrue(encryption.encryptWithPasswordParams.isEmpty)
   }
 
+  func test_backup_withAnotherDerivedSecretStorage_usesThePasswordCipher_andWritesNoKey() async throws {
+    let derived = DerivedSecretStorageFake(secret: "derived-secret", encryption: encryption)
+    let mpc = makeMpc(storage: derived)
+
+    let response = try await mpc.backup(.PasskeyPrf)
+
+    // The protocol's default cipher: the password cipher, keyed by the secret.
+    XCTAssertEqual(response.cipherText, "password-cipher-text")
+    XCTAssertEqual(encryption.encryptWithPasswordParams.map(\.password), ["derived-secret"])
+    XCTAssertEqual(derived.enrollTraceIds, [response.traceId])
+    XCTAssertEqual(derived.writeCallsCount, 0)
+  }
+
+  func test_backup_whenTheStorageDerivesAnEmptySecret_throws_beforeTheMpcBackupRuns() async {
+    let mobile = MobileSpy()
+    let mpc = makeMpc(mobile: mobile, storage: DerivedSecretStorageFake(secret: "", encryption: encryption))
+
+    do {
+      _ = try await mpc.backup(.PasskeyPrf)
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? MpcError, MpcError.unexpectedErrorOnBackup("PASSKEY_PRF storage returned no secret to back up with."))
+    }
+    XCTAssertEqual(mobile.mobileBackupCallsCount, 0)
+    XCTAssertEqual(mobile.mobileBackupEd25519CallsCount, 0)
+    XCTAssertTrue(encryption.encryptWithPasswordParams.isEmpty)
+  }
+
+  // MARK: - Methods whose storage keeps its own key
+
+  func test_backup_withAStorageThatKeepsItsKey_stillWritesTheKey() async throws {
+    let other = PortalStorageSpy()
+    other.encryptReturnValue = EncryptData(key: "random-key", cipherText: "random-cipher-text")
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Password, withStorage: other)
+
+    let response = try await mpc.backup(.Password)
+
+    XCTAssertEqual(response.cipherText, "random-cipher-text")
+    XCTAssertEqual(other.writeCallsCount, 1)
+    XCTAssertEqual(other.writeValueParam, "random-key")
+  }
+
+  func test_backup_whenAStorageThatKeepsItsKeyCannotWriteIt_throws() async {
+    let other = PortalStorageSpy()
+    other.writeReturnValue = false
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Password, withStorage: other)
+
+    do {
+      _ = try await mpc.backup(.Password)
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? MpcError, MpcError.unexpectedErrorOnBackup("Unable to write encryption key."))
+    }
+  }
+
+  // MARK: - Default implementations
+
+  func test_olderMpcConformers_reportNoPasskeyPrfStorage_forSetPasskeyPrfUser() {
+    let legacy: PortalMpcProtocol = MockPortalMpc()
+
+    XCTAssertThrowsError(try legacy.setPasskeyPrfUser(PasskeyPrfUser(name: "jane", displayName: "Jane"))) { error in
+      guard case MpcError.backupMethodNotRegistered = error else {
+        return XCTFail("Expected backupMethodNotRegistered, got \(error)")
+      }
+    }
+  }
+
   // MARK: - recover / eject
 
   func test_recover_readsTheSecret_andDecryptsWithThePasswordCipher() async throws {
@@ -428,5 +497,46 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     mpc.registerBackupMethod(.PasskeyPrf, withStorage: storage)
 
     XCTAssertNil(storage.anchor)
+  }
+}
+
+/// A derived-secret storage other than `PasskeyPrfStorage`: it returns a fixed secret and keeps
+/// the protocol's default cipher.
+private final class DerivedSecretStorageFake: PortalDerivedSecretStorage {
+  var api: PortalApiProtocol?
+  let encryption: PortalEncryptionProtocol
+  private let secret: String
+  private(set) var enrollTraceIds: [String?] = []
+  private(set) var writeCallsCount = 0
+
+  init(secret: String, encryption: PortalEncryptionProtocol) {
+    self.secret = secret
+    self.encryption = encryption
+  }
+
+  func enroll(traceId: String?) async throws -> String {
+    enrollTraceIds.append(traceId)
+    return secret
+  }
+
+  func read(traceId _: String?) async throws -> String {
+    secret
+  }
+
+  func read() async throws -> String {
+    secret
+  }
+
+  func delete() async throws -> Bool {
+    false
+  }
+
+  func validateOperations() async throws -> Bool {
+    true
+  }
+
+  func write(_: String) async throws -> Bool {
+    writeCallsCount += 1
+    return true
   }
 }

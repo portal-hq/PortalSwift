@@ -1192,6 +1192,16 @@ extension PortalCredentialsTests {
     XCTAssertFalse(fired, "A conformer without a session has nothing to report.")
   }
 
+  func test_PortalProtocol_setPasskeyPrfUser_defaultImplementation_willThrowNotRegistered() throws {
+    let conformer: PortalProtocol = try StubPortal()
+
+    XCTAssertThrowsError(try conformer.setPasskeyPrfUser(PasskeyPrfUser(name: "jane", displayName: "Jane"))) { error in
+      guard case MpcError.backupMethodNotRegistered = error else {
+        return XCTFail("Expected backupMethodNotRegistered, got \(error)")
+      }
+    }
+  }
+
   @available(*, deprecated, message: "Reads the deprecated apiKey bridge on purpose.")
   func test_PortalProtocol_apiKey_willRemainRequirement() throws {
     let spy = try makeSpy()
