@@ -131,6 +131,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBOutlet var passkeyBackupButton: UIButton?
   @IBOutlet var passkeyRecoverButton: UIButton?
+  @IBOutlet var passkeyPrfBackupButton: UIButton?
+  @IBOutlet var passkeyPrfRecoverButton: UIButton?
   @IBOutlet var passwordBackupButton: UIButton!
   @IBOutlet var passwordRecoverButton: UIButton!
   @IBOutlet var gdriveBackupButton: UIButton!
@@ -1119,6 +1121,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       portal.setLogLevel(.debug)
       try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
       try portal.setGDriveView(self)
+      self.registerPasskeyPrfBackup(portal, relyingParty: config.relyingParty)
       // `viewDidAppear` re-applies this: the window is nil on the launch path, and a force unwrap
       // here used to crash the app when a restore beat the first layout.
       if let window = view.window {
@@ -1389,6 +1392,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.iCloudBackupButton?.isHidden = !walletExists || !isWalletOnDevice
           self.passkeyBackupButton?.isEnabled = walletExists && isWalletOnDevice
           self.passkeyBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.passkeyPrfBackupButton?.isEnabled = walletExists && isWalletOnDevice && self.isPasskeyPrfAvailable
+          self.passkeyPrfBackupButton?.isHidden = !walletExists || !isWalletOnDevice
           self.passwordBackupButton?.isEnabled = walletExists && isWalletOnDevice
           self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
 
@@ -1402,6 +1407,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.iCloudRecoverButton?.isHidden = !walletExists
           self.passkeyRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Passkey)
           self.passkeyRecoverButton?.isHidden = !walletExists
+          self.passkeyPrfRecoverButton?.isEnabled = availableRecoveryMethods.contains(.PasskeyPrf) && self.isPasskeyPrfAvailable
+          self.passkeyPrfRecoverButton?.isHidden = !walletExists
           self.passwordRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Password)
           self.passwordRecoverButton?.isHidden = !walletExists
 

@@ -187,6 +187,13 @@ class PortalMpcSpy: PortalMpcProtocol {
     setPasswordParam = value
   }
 
+  var setPasskeyPrfUserCallsCount = 0
+  var setPasskeyPrfUserParam: PortalSwift.PasskeyPrfUser?
+  func setPasskeyPrfUser(_ user: PortalSwift.PasskeyPrfUser?) throws {
+    setPasskeyPrfUserCallsCount += 1
+    setPasskeyPrfUserParam = user
+  }
+
   func backup(method: PortalSwift.BackupMethods.RawValue, backupConfigs: PortalSwift.BackupConfigs?, completion _: @escaping (PortalSwift.Result<String>) -> Void, progress: ((PortalSwift.MpcStatus) -> Void)?) {
     backupWithCompletionCallsCount += 1
     backupWithCompletionMethodParam = method

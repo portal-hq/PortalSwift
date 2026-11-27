@@ -716,9 +716,13 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: iCloud storage
   ///     - `.Password`: Password-protected storage
   ///     - `.Passkey`: Passkey authentication storage
+  ///     - `.PasskeyPrf`: A secret derived from a passkey through the WebAuthn PRF extension
+  ///       (`PasskeyPrfStorage`, iOS 18.4+). Not registered by default.
   ///     - `.Firebase`: Firebase authentication storage
-  ///     - `.local`: Local storage
-  ///     - `.Unknown`: Can be used for custom storage
+  ///     - `.local`: Local storage, or your own storage (wire value `CUSTOM`)
+  ///     - `.Unknown`: What Portal reports for a backup method this SDK version does not know.
+  ///       Register new custom storage under `.local`. Backups already made under `.Unknown` only
+  ///       recover with `.Unknown`, so keep that registration for them.
   ///   - withStorage: A custom implementation of `PortalStorage` protocol that handles
   ///     the storage operations for the specified backup method.
   ///
@@ -803,7 +807,8 @@ public final class Portal: PortalProtocol {
   ///
   /// - Throws: Errors if the passkey anchor configuration fails.
   ///
-  /// - Note: Required to be called before using passkey backup or recovery methods.
+  /// - Note: Required to be called before using passkey backup or recovery methods. Applies to
+  ///   both the `.Passkey` and `.PasskeyPrf` storages that are registered.
   @available(iOS 16, *)
   public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
     try self.mpc.setPasskeyAuthenticationAnchor(anchor)
@@ -845,6 +850,18 @@ public final class Portal: PortalProtocol {
     try self.mpc.setPassword(value)
   }
 
+  /// Sets the user the Passkey PRF passkey is created for, for example the end user's account
+  /// name, so they can tell the passkey apart in their passkey provider.
+  ///
+  /// Defaults to `"<custodian name> Backup (PRF)"`. Only used when a `.PasskeyPrf` backup creates
+  /// the passkey: a client that already has one reuses it, and its labels cannot be changed.
+  /// Pass `nil` to go back to the default.
+  ///
+  /// - Throws: `MpcError.backupMethodNotRegistered` if no `PasskeyPrfStorage` is registered.
+  public func setPasskeyPrfUser(_ user: PasskeyPrfUser?) throws {
+    try self.mpc.setPasskeyPrfUser(user)
+  }
+
   // Wallet management helpers
 
   /// Creates a backup of the wallet using the specified backup method.
@@ -858,6 +875,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Back up to iCloud
   ///     - `.Password`: Back up with password protection
   ///     - `.Passkey`: Back up with passkey authentication
+  ///     - `.PasskeyPrf`: Back up with a secret derived from a passkey (iOS 18.4+)
   ///     - `.local`: Back up to local storage
   ///   - usingProgressCallback: Optional callback to track the backup progress.
   ///     The callback receives an `MpcStatus` object containing:
@@ -979,6 +997,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Authenticate using iCloud backup
   ///     - `.Password`: Authenticate using password
   ///     - `.Passkey`: Authenticate using passkey
+  ///     - `.PasskeyPrf`: Authenticate using the Passkey PRF passkey (iOS 18.4+)
   ///     - `.local`: Authenticate using local backup
   ///   - withCipherText: Optional cipher text from a previous backup. Required for some backup methods.
   ///   - andOrganizationBackupShare: Optional backup share provided by the organization.
@@ -1026,6 +1045,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Authenticate using iCloud backup
   ///     - `.Password`: Authenticate using password
   ///     - `.Passkey`: Authenticate using passkey
+  ///     - `.PasskeyPrf`: Authenticate using the Passkey PRF passkey (iOS 18.4+)
   ///     - `.local`: Authenticate using local backup
   ///   - withCipherText: Optional cipher text from a previous backup.
   ///   - andOrganizationBackupShare: Optional backup share provided by the organization for EVM chains.
@@ -1070,6 +1090,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Recover from iCloud backup
   ///     - `.Password`: Recover using password
   ///     - `.Passkey`: Recover using passkey
+  ///     - `.PasskeyPrf`: Recover using the Passkey PRF passkey (iOS 18.4+)
   ///     - `.local`: Recover from local backup
   ///   - withCipherText: Optional cipher text from a previous backup. Required for some backup methods.
   ///   - usingProgressCallback: Optional callback to track the recovery progress.
@@ -1125,6 +1146,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Store in iCloud
   ///     - `.Password`: Protect with password
   ///     - `.Passkey`: Protect with passkey
+  ///     - `.PasskeyPrf`: Protect with a secret derived from a passkey (iOS 18.4+)
   ///     - `.local`: Store locally
   ///   - usingProgressCallback: Optional callback to track the wallet creation progress.
   ///     The callback receives an `MpcStatus` object containing:
@@ -1508,6 +1530,7 @@ public final class Portal: PortalProtocol {
   ///   - `.iCloud`: iCloud backup
   ///   - `.Password`: Password-protected backup
   ///   - `.Passkey`: Passkey backup
+  ///   - `.PasskeyPrf`: Passkey PRF backup
   ///   - `.local`: Local backup
   ///
   /// - Throws:
@@ -2996,11 +3019,22 @@ public enum BackupMethods: String, Codable {
   case local = "CUSTOM"
   case Password = "PASSWORD"
   case Passkey = "PASSKEY"
+  /// A secret derived from a passkey through the WebAuthn PRF extension (`PasskeyPrfStorage`).
+  case PasskeyPrf = "PASSKEY_PRF"
   case Firebase = "FIREBASE"
   case Unknown = "UNKNOWN"
 
   init?(fromString: String) {
     self.init(rawValue: fromString)
+  }
+
+  /// Decodes a backup method Portal reports, mapping a value this SDK version does not know to
+  /// `.Unknown` instead of failing. A client response is decoded as a whole, so one share pair
+  /// backed up with a method added after this release must not make the client unreadable.
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let rawValue = try container.decode(String.self)
+    self = BackupMethods(rawValue: rawValue) ?? .Unknown
   }
 }
 

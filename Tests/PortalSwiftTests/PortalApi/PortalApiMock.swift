@@ -176,8 +176,11 @@ class PortalApiMock: PortalApiProtocol {
   var storeClientCipherTextReturnValue: Bool?
   var storeClientCipherTextCallsCount: Int = 0
   var storeClientCipherTextTraceIdParam: String?
-  func storeClientCipherText(_: String, cipherText _: String, traceId: String?) async throws -> Bool {
+  /// The `(backupSharePairId, cipherText)` of every call, in order.
+  var storeClientCipherTextParams: [(backupSharePairId: String, cipherText: String)] = []
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String, traceId: String?) async throws -> Bool {
     storeClientCipherTextCallsCount += 1
+    storeClientCipherTextParams.append((backupSharePairId, cipherText))
     storeClientCipherTextTraceIdParam = traceId
     return storeClientCipherTextReturnValue ?? false
   }
@@ -338,5 +341,39 @@ class PortalApiMock: PortalApiProtocol {
   func getWalletCapabilities(traceId: String?) async throws -> PortalSwift.WalletCapabilitiesResponse {
     getWalletCapabilitiesTraceIdParam = traceId
     return [:]
+  }
+
+  // MARK: - Passkey PRF
+
+  /// Results returned by successive `getPasskeyPrfCredential` calls; `nil` (no record) once empty.
+  var getPasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential?, Error>] = []
+  var getPasskeyPrfCredentialCallsCount = 0
+  var getPasskeyPrfCredentialTraceIds: [String?] = []
+  func getPasskeyPrfCredential(traceId: String?) async throws -> PasskeyPrfCredential? {
+    getPasskeyPrfCredentialCallsCount += 1
+    getPasskeyPrfCredentialTraceIds.append(traceId)
+    if !getPasskeyPrfCredentialResults.isEmpty {
+      return try getPasskeyPrfCredentialResults.removeFirst().get()
+    }
+    return nil
+  }
+
+  /// Results returned by successive `storePasskeyPrfCredential` calls; echoes the body once empty.
+  var storePasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential, Error>] = []
+  var storePasskeyPrfCredentialParams: [PasskeyPrfCredential] = []
+  var storePasskeyPrfCredentialTraceIds: [String?] = []
+  /// Awaited at the start of every `storePasskeyPrfCredential` call, so a test can hold the call.
+  var storePasskeyPrfCredentialHook: (() async -> Void)?
+  /// Whether the calling task was cancelled when each `storePasskeyPrfCredential` call ran.
+  var storePasskeyPrfCredentialSawCancellation: [Bool] = []
+  func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId: String?) async throws -> PasskeyPrfCredential {
+    await storePasskeyPrfCredentialHook?()
+    storePasskeyPrfCredentialSawCancellation.append(Task.isCancelled)
+    storePasskeyPrfCredentialParams.append(credential)
+    storePasskeyPrfCredentialTraceIds.append(traceId)
+    if !storePasskeyPrfCredentialResults.isEmpty {
+      return try storePasskeyPrfCredentialResults.removeFirst().get()
+    }
+    return credential
   }
 }

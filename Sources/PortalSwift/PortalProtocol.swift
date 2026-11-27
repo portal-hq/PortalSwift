@@ -86,6 +86,7 @@ public protocol PortalProtocol {
   @available(iOS 16, *)
   func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws
   func setPassword(_ value: String) throws
+  func setPasskeyPrfUser(_ user: PasskeyPrfUser?) throws
   func backupWallet(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (cipherText: String, storageCallback: () async throws -> Void)
   func createWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalCreateWalletResponse
   func createSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
@@ -194,6 +195,11 @@ public protocol PortalProtocol {
 
 // Proxy functions to avoid releasing breaking changes after adding new params
 public extension PortalProtocol {
+  /// Default for conformers written before Passkey PRF (API-key-only wrappers and test doubles).
+  func setPasskeyPrfUser(_: PasskeyPrfUser?) throws {
+    throw MpcError.backupMethodNotRegistered("Could not find an instance of `PasskeyPrfStorage`. Please use `portal.registerBackupMethod()`")
+  }
+
   init(
     _ apiKey: String,
     withRpcConfig: [String: String],

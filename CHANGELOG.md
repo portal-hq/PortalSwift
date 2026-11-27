@@ -12,6 +12,23 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+
+### Added
+
+- Passkey PRF backup (`BackupMethods.PasskeyPrf`, iOS 18.4+): back up with a secret derived from a passkey, and recover with the same passkey on iOS, React Native, or web.
+    - Register `PasskeyPrfStorage(relyingParty:)` with `portal.registerBackupMethod(.PasskeyPrf, withStorage:)`. The app needs the relying party's domain in its `webcredentials` Associated Domains.
+    - `portal.setPasskeyPrfUser(_:)` names the passkey the first backup creates.
+    - Passkey failures throw `PortalPasskeyPrfError`; branch on its `reason`.
+
+### Changed
+
+- `BackupMethods` gains `PasskeyPrf`. If you switch exhaustively over `BackupMethods`, add it.
+
+### Improved
+
+- A client with a backup made by a method this SDK version doesn't know yet still loads; that method is reported as `.Unknown`.
+
 ## 8.2.0 - 2026-11-23
 
 ### Added
