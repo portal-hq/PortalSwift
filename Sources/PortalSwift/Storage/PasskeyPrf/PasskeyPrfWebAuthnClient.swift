@@ -124,19 +124,27 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
       registration.prf = .inputValues(.init(saltInput1: request.prfSalt))
       return registration
     }
+    return try Self.createResult(from: credential)
+  }
 
+  /// The passkey a creation produced. Anything but a platform registration is a ceremony failure.
+  static func createResult(from credential: ASAuthorizationCredential) throws -> PasskeyPrfCreateResult {
     guard let registration = credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration else {
       throw PasskeyPrfCeremonyError.failed(nil)
     }
+    return Self.createResult(credentialId: registration.credentialID, prf: registration.prf)
+  }
 
-    let prf = registration.prf
-    return PasskeyPrfCreateResult(
-      credentialId: registration.credentialID,
+  /// Split from `createResult(from:)` because the system's credential types can only come from a
+  /// real ceremony, while the PRF output can be built in a test.
+  static func createResult(credentialId: Data, prf: ASAuthorizationPublicKeyCredentialPRFRegistrationOutput?) -> PasskeyPrfCreateResult {
+    PasskeyPrfCreateResult(
+      credentialId: credentialId,
       // Platform registrations do not report transports; Portal stores none, as the React
       // Native SDK does on iOS.
       transports: nil,
       prfEnabled: prf?.isSupported ?? false,
-      prfOutput: prf?.first.map(Self.bytes(of:))
+      prfOutput: prf?.first.map(bytes(of:))
     )
   }
 
@@ -151,14 +159,22 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
       assertion.prf = .inputValues(.init(saltInput1: request.prfSalt))
       return assertion
     }
+    return try Self.getResult(from: credential)
+  }
 
+  /// The passkey an assertion used. Anything but a platform assertion is a ceremony failure.
+  static func getResult(from credential: ASAuthorizationCredential) throws -> PasskeyPrfGetResult {
     guard let assertion = credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion else {
       throw PasskeyPrfCeremonyError.failed(nil)
     }
+    return Self.getResult(credentialId: assertion.credentialID, prf: assertion.prf)
+  }
 
-    return PasskeyPrfGetResult(
-      credentialId: assertion.credentialID,
-      prfOutput: assertion.prf.map { Self.bytes(of: $0.first) }
+  /// Split from `getResult(from:)` for the same reason as `createResult(credentialId:prf:)`.
+  static func getResult(credentialId: Data, prf: ASAuthorizationPublicKeyCredentialPRFAssertionOutput?) -> PasskeyPrfGetResult {
+    PasskeyPrfGetResult(
+      credentialId: credentialId,
+      prfOutput: prf.map { Self.bytes(of: $0.first) }
     )
   }
 

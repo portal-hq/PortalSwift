@@ -124,6 +124,19 @@ final class PasskeyPrfControllerFake: PasskeyPrfAuthorizationControlling {
   }
 }
 
+/// The delegate the system controller reports to, for checking how it is wired.
+final class PasskeyPrfDelegateStub: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+  let anchor: ASPresentationAnchor
+
+  init(anchor: ASPresentationAnchor) {
+    self.anchor = anchor
+  }
+
+  func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
+    anchor
+  }
+}
+
 /// Waits for `task` for at most `timeout` seconds and returns its result, or `nil` if it never
 /// finished. A continuation nobody resumes then fails the test instead of hanging the run.
 func passkeyPrfResult<T>(of task: Task<T, Error>, timeout: TimeInterval = 5) async -> Swift.Result<T, Error>? {
@@ -354,6 +367,35 @@ final class PasskeyPrfStorageTests: XCTestCase {
     )
   }
 
+  func test_everyReason_hasItsOwnMessage_andTheDescriptionNamesTheCode() {
+    let errors = PortalPasskeyPrfError.Reason.allCases.map { PortalPasskeyPrfError($0) }
+
+    XCTAssertEqual(Set(errors.compactMap(\.errorDescription)).count, errors.count)
+    for error in errors {
+      XCTAssertTrue(error.errorDescription?.hasPrefix("[Portal] ") ?? false, "\(error.reason)")
+      XCTAssertEqual(error.description, "PortalPasskeyPrfError(\(error.reason.rawValue)): \(error.errorDescription ?? "")")
+      XCTAssertEqual(error.isUserCancelled, error.reason == .userCancelled)
+    }
+    XCTAssertEqual(PortalPasskeyPrfError(.credentialNotFound).errorDescription, "[Portal] No passkey has been enrolled for this backup method.")
+    XCTAssertEqual(
+      PortalPasskeyPrfError(.notSupported).errorDescription,
+      "[Portal] This device or passkey provider does not support the WebAuthn PRF extension."
+    )
+    // An empty context adds nothing, and the cause stays out of the message and of equality.
+    XCTAssertEqual(PortalPasskeyPrfError(.ceremonyFailed, context: "").errorDescription, PortalPasskeyPrfError(.ceremonyFailed).errorDescription)
+    XCTAssertEqual(PortalPasskeyPrfError(.ceremonyFailed, cause: NSError(domain: "x", code: 1)), PortalPasskeyPrfError(.ceremonyFailed))
+    XCTAssertNotEqual(PortalPasskeyPrfError(.ceremonyFailed, context: "a"), PortalPasskeyPrfError(.ceremonyFailed, context: "b"))
+  }
+
+  func test_storageErrors_sayWhatWentWrong() {
+    XCTAssertEqual(
+      PasskeyPrfStorageError.notAttachedToPortal.errorDescription,
+      "[Portal] PasskeyPrfStorage is not attached to a Portal instance. Register it with `portal.registerBackupMethod(.PasskeyPrf, withStorage:)`."
+    )
+    XCTAssertEqual(PasskeyPrfStorageError.apiUnsupported.errorDescription, "[Portal] The attached PortalApiProtocol does not support Passkey PRF credentials.")
+    XCTAssertEqual(PasskeyPrfStorageError.deleteNotSupported.errorDescription, "[Portal] PasskeyPrfStorage does not support delete.")
+  }
+
   func test_storeRetryDelays_matchTheOtherSdks() {
     XCTAssertEqual(PasskeyPrfConstants.storeRetryDelaysMs, [250, 1000])
     XCTAssertEqual(PasskeyPrfStorage.storeAttempts, 3)
@@ -382,6 +424,48 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertNil(PasskeyPrfEncoding.data(fromBase64Url: ""))
     // Non-canonical trailing bits alias another ID.
     XCTAssertNil(PasskeyPrfEncoding.data(fromBase64Url: "-_9"))
+    // One character past a full group is never valid base64.
+    XCTAssertNil(PasskeyPrfEncoding.data(fromBase64Url: "AQIDB"))
+  }
+
+  func test_encoding_hexDecodesEitherCase_andRejectsAnythingElse() {
+    XCTAssertEqual(PasskeyPrfEncoding.data(fromHex: "00abFF"), Data([0x00, 0xAB, 0xFF]))
+    XCTAssertEqual(PasskeyPrfEncoding.data(fromHex: PasskeyPrfConstants.saltHex), PasskeyPrfConstants.salt)
+    XCTAssertEqual(PasskeyPrfEncoding.data(fromHex: ""), Data())
+    XCTAssertNil(PasskeyPrfEncoding.data(fromHex: "abc"))
+    XCTAssertNil(PasskeyPrfEncoding.data(fromHex: "0g"))
+  }
+
+  @MainActor
+  func test_publicInit_presentsFromTheGivenAnchor_throughTheSystemPasskeyClient() {
+    let window = UIWindow()
+
+    let storage = PasskeyPrfStorage(anchor: window)
+
+    XCTAssertTrue(storage.anchor === window)
+    XCTAssertTrue(storage.webAuthnClient is PasskeyPrfAuthorizationClient)
+    XCTAssertTrue(storage.encryption is PortalEncryption)
+    XCTAssertEqual(storage.relyingParty, "portalhq.io")
+    XCTAssertEqual(storage.relyingPartyName, "Portal")
+    XCTAssertNil(storage.user)
+  }
+
+  /// The defaults the other tests replace: the OS version check, and a real wait between store
+  /// attempts.
+  func test_defaultSeams_checkTheOSVersion_andWaitForRealBetweenStoreAttempts() async throws {
+    try XCTSkipUnless(ProcessInfo.processInfo.isOperatingSystemAtLeast(PasskeyPrfConstants.minimumIOSVersion), "Passkey PRF needs iOS 18.4")
+    XCTAssertTrue(PasskeyPrfStorage.platformSupportsPrf())
+    let storage = PasskeyPrfStorage(encryption: encryption, webAuthnClient: client)
+    storage.api = api
+    queueCreation()
+    api.storePasskeyPrfCredentialResults = [.failure(URLError(.timedOut))]
+
+    let started = Date()
+    let secret = try await storage.enroll()
+
+    XCTAssertEqual(secret, PasskeyPrfEncoding.hex(Self.createdOutput))
+    XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 2)
+    XCTAssertGreaterThanOrEqual(Date().timeIntervalSince(started), Double(PasskeyPrfConstants.storeRetryDelaysMs[0]) / 1000)
   }
 
   // MARK: - enroll() with an existing record
@@ -708,6 +792,11 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertFalse(PasskeyPrfStorage.isTransient(PortalRequestsError.clientError("404 - x", url: "")))
     XCTAssertFalse(PasskeyPrfStorage.isTransient(PortalRequestsError.unauthorized))
     XCTAssertFalse(PasskeyPrfStorage.isTransient(PortalCredentialError.unavailable))
+    // No status to judge by: an unreadable response, or a message without one, gets another try.
+    XCTAssertTrue(PasskeyPrfStorage.isTransient(PortalRequestsError.couldNotParseHttpResponse))
+    XCTAssertTrue(PasskeyPrfStorage.isTransient(PortalRequestsError.clientError("bad", url: "")))
+    XCTAssertFalse(PasskeyPrfStorage.isTransient(CancellationError()))
+    XCTAssertFalse(PasskeyPrfStorage.isTransient(NSError(domain: "other", code: 1)))
   }
 
   // MARK: - read()
@@ -754,6 +843,13 @@ final class PasskeyPrfStorageTests: XCTestCase {
   func test_read_whenAssertionHasNoPrfOutput_throwsNotSupported() async {
     api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
     client.getResults = [.success(PasskeyPrfGetResult(credentialId: Self.serverCredentialId, prfOutput: nil))]
+
+    await assertPasskeyPrfError(.notSupported) { try await self.storage.read() }
+  }
+
+  func test_read_whenAssertionOutputIsNot32Bytes_throwsNotSupported() async {
+    api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
+    client.getResults = [.success(PasskeyPrfGetResult(credentialId: Self.serverCredentialId, prfOutput: Data(repeating: 1, count: 16)))]
 
     await assertPasskeyPrfError(.notSupported) { try await self.storage.read() }
   }
@@ -947,6 +1043,166 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertEqual(controller.cancelCallsCount, 0)
     await Task.yield()
     XCTAssertNil(controller.delegate)
+  }
+
+  @MainActor
+  func test_authorizationClient_createCredential_asksForAPlatformPasskey_withTheRawSalt_andRequiredVerification() async throws {
+    let controller = PasskeyPrfControllerFake()
+    var started: ASAuthorizationRequest?
+    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow()) { request, delegate in
+      started = request
+      controller.delegate = delegate
+      return controller
+    }
+    let request = PasskeyPrfCreateRequest(
+      rpId: "wallet.example",
+      userId: Data([0x75, 0x69, 0x64]),
+      userName: "jane@example.com",
+      userDisplayName: "Jane, Acme wallet backup",
+      challenge: Data(repeating: 0xC1, count: 32),
+      prfSalt: PasskeyPrfConstants.salt
+    )
+    let task = Task { @MainActor in
+      try await client.createCredential(request)
+    }
+    await fulfillment(of: [controller.performed], timeout: 5)
+    Self.dismiss(controller)
+    _ = await passkeyPrfResult(of: task)
+
+    let registration = try XCTUnwrap(started as? ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest)
+    XCTAssertEqual(registration.relyingPartyIdentifier, "wallet.example")
+    XCTAssertEqual(registration.userID, request.userId)
+    XCTAssertEqual(registration.name, request.userName)
+    XCTAssertEqual(registration.displayName, request.userDisplayName)
+    XCTAssertEqual(registration.challenge, request.challenge)
+    XCTAssertEqual(registration.userVerificationPreference, .required)
+    XCTAssertEqual(registration.attestationPreference, ASAuthorizationPublicKeyCredentialAttestationKind.none)
+    // Handed over raw: AuthenticationServices applies the WebAuthn PRF transform itself.
+    XCTAssertEqual(registration.prf?.inputValues?.saltInput1, PasskeyPrfConstants.salt)
+    XCTAssertNil(registration.prf?.inputValues?.saltInput2)
+  }
+
+  @MainActor
+  func test_authorizationClient_getCredential_asksForTheEnrolledPasskeyOnly_withTheRawSalt() async throws {
+    let controller = PasskeyPrfControllerFake()
+    var started: ASAuthorizationRequest?
+    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow()) { request, delegate in
+      started = request
+      controller.delegate = delegate
+      return controller
+    }
+    let request = PasskeyPrfGetRequest(
+      rpId: "wallet.example",
+      challenge: Data(repeating: 0xC2, count: 32),
+      allowCredentialId: Self.serverCredentialId,
+      prfSalt: PasskeyPrfConstants.salt
+    )
+    let task = Task { @MainActor in
+      try await client.getCredential(request)
+    }
+    await fulfillment(of: [controller.performed], timeout: 5)
+    Self.dismiss(controller)
+    _ = await passkeyPrfResult(of: task)
+
+    let assertion = try XCTUnwrap(started as? ASAuthorizationPlatformPublicKeyCredentialAssertionRequest)
+    XCTAssertEqual(assertion.relyingPartyIdentifier, "wallet.example")
+    XCTAssertEqual(assertion.challenge, request.challenge)
+    XCTAssertEqual(assertion.allowedCredentials.map(\.credentialID), [Self.serverCredentialId])
+    XCTAssertEqual(assertion.userVerificationPreference, .required)
+    XCTAssertEqual(assertion.prf?.inputValues?.saltInput1, PasskeyPrfConstants.salt)
+    XCTAssertNil(assertion.prf?.inputValues?.saltInput2)
+    XCTAssertNil(assertion.prf?.perCredentialInputValues)
+  }
+
+  @MainActor
+  func test_authorizationClient_presentsThePromptFromItsAnchor() async {
+    let window = UIWindow()
+    let controller = PasskeyPrfControllerFake()
+    let client = PasskeyPrfAuthorizationClient(anchor: window) { _, delegate in
+      controller.delegate = delegate
+      return controller
+    }
+    let task = Task { @MainActor in
+      try await client.getCredential(Self.assertionRequest)
+    }
+    await fulfillment(of: [controller.performed], timeout: 5)
+
+    XCTAssertTrue(controller.delegate?.presentationAnchor(for: Self.makeSystemController()) === window)
+
+    Self.dismiss(controller)
+    _ = await passkeyPrfResult(of: task)
+  }
+
+  @MainActor
+  func test_makeSystemController_reportsToTheDelegate_andPresentsFromIt() throws {
+    let delegate = PasskeyPrfDelegateStub(anchor: UIWindow())
+    let request = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: "portalhq.io")
+      .createCredentialAssertionRequest(challenge: Data(count: 32))
+
+    let made = PasskeyPrfAuthorizationClient.makeSystemController(for: request, delegate: delegate)
+
+    let controller = try XCTUnwrap(made as? ASAuthorizationController)
+    XCTAssertTrue(controller.delegate === delegate)
+    XCTAssertTrue(controller.presentationContextProvider === delegate)
+    XCTAssertEqual(controller.authorizationRequests.count, 1)
+    XCTAssertTrue(controller.authorizationRequests.first === request)
+  }
+
+  func test_authorizationClient_creationResult_reportsPrfSupport_andCopiesTheOutput() {
+    let id = Self.createdCredentialId
+
+    let evaluated = PasskeyPrfAuthorizationClient.createResult(credentialId: id, prf: .init(first: SymmetricKey(data: Self.createdOutput), second: nil))
+    XCTAssertEqual(evaluated.credentialId, id)
+    XCTAssertNil(evaluated.transports)
+    XCTAssertTrue(evaluated.prfEnabled)
+    XCTAssertEqual(evaluated.prfOutput, Self.createdOutput)
+
+    // Enabled, with the salt evaluated only on assertion.
+    let enabled = PasskeyPrfAuthorizationClient.createResult(credentialId: id, prf: .supported)
+    XCTAssertTrue(enabled.prfEnabled)
+    XCTAssertNil(enabled.prfOutput)
+
+    let unsupported = PasskeyPrfAuthorizationClient.createResult(credentialId: id, prf: .unsupported)
+    XCTAssertFalse(unsupported.prfEnabled)
+    XCTAssertNil(unsupported.prfOutput)
+
+    let silent = PasskeyPrfAuthorizationClient.createResult(credentialId: id, prf: nil)
+    XCTAssertFalse(silent.prfEnabled)
+    XCTAssertNil(silent.prfOutput)
+  }
+
+  func test_authorizationClient_assertionResult_copiesTheOutput() {
+    let evaluated = PasskeyPrfAuthorizationClient.getResult(
+      credentialId: Self.serverCredentialId,
+      prf: .init(first: SymmetricKey(data: Self.assertedOutput), second: nil)
+    )
+    XCTAssertEqual(evaluated.credentialId, Self.serverCredentialId)
+    XCTAssertEqual(evaluated.prfOutput, Self.assertedOutput)
+
+    XCTAssertNil(PasskeyPrfAuthorizationClient.getResult(credentialId: Self.serverCredentialId, prf: nil).prfOutput)
+  }
+
+  func test_authorizationClient_credentialOfAnotherType_isACeremonyFailure() {
+    let password = ASPasswordCredential(user: "jane", password: "not-a-passkey")
+
+    XCTAssertThrowsError(try PasskeyPrfAuthorizationClient.createResult(from: password)) { error in
+      guard case let PasskeyPrfCeremonyError.failed(cause) = error else {
+        return XCTFail("Expected PasskeyPrfCeremonyError.failed, got \(error)")
+      }
+      XCTAssertNil(cause)
+    }
+    XCTAssertThrowsError(try PasskeyPrfAuthorizationClient.getResult(from: password)) { error in
+      guard case let PasskeyPrfCeremonyError.failed(cause) = error else {
+        return XCTFail("Expected PasskeyPrfCeremonyError.failed, got \(error)")
+      }
+      XCTAssertNil(cause)
+    }
+  }
+
+  /// Ends a ceremony the test only started to inspect, the way the system reports a dismissed prompt.
+  @MainActor
+  private static func dismiss(_ controller: PasskeyPrfControllerFake) {
+    controller.delegate?.authorizationController?(controller: makeSystemController(), didCompleteWithError: ASAuthorizationError(.canceled))
   }
 
   private static let assertionRequest = PasskeyPrfGetRequest(
