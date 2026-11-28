@@ -968,53 +968,65 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(self.store.opCounts[.delete], 0)
   }
 
-  func test_getSession_willClearAndReturnNil_afterReinstall() throws {
+  func test_getSession_willReturnNilAndKeepTheItem_afterReinstall() throws {
     try self.subject.set(self.session("previous-install-token"))
+    let previousTag = self.installIds.tag
     let reinstalledIds = InMemoryAuthInstallIdStore()
     let reinstalled = self.reinstalledStorage(installIds: reinstalledIds)
 
     XCTAssertNil(try reinstalled.getSession())
+    XCTAssertNil(try reinstalled.getSession(), "Every read ignores it, not just the first.")
 
-    XCTAssertTrue(self.store.isEmpty, "The previous install's session must be deleted, not just skipped.")
+    XCTAssertEqual(self.store.item()?.generic, previousTag, "The item is ignored, not deleted or re-tagged.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+    XCTAssertEqual(self.store.opCounts[.update], 0)
     XCTAssertNil(reinstalledIds.tag, "Reading must not create an install id.")
-    XCTAssertNil(try reinstalled.getSession())
   }
 
-  func test_getSession_willClearAndReturnNil_whenTaggedByAnotherInstall() throws {
+  func test_getSession_willReturnNil_whenTaggedByAnotherInstall() throws {
     self.installIds = InMemoryAuthInstallIdStore(id: "this-install")
     self.subject = self.storage()
     self.store.seed(data: self.session("token"), generic: Data("another-install".utf8))
 
     XCTAssertNil(try self.subject.getSession())
-    XCTAssertTrue(self.store.isEmpty)
+    XCTAssertNotNil(self.store.item())
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
   }
 
-  func test_getSession_willClearAnotherInstallsEntry_evenWhenItIsUnparseable() throws {
+  func test_getSession_willReturnNil_forAnotherInstallsEntry_evenWhenItIsUnparseable() throws {
+    // Whose it is decides first: another install's entry is left alone, parseable or not.
     self.store.seed(data: "not json", generic: Data("another-install".utf8))
 
     XCTAssertNil(try self.subject.getSession())
-    XCTAssertTrue(self.store.isEmpty)
+    XCTAssertEqual(self.store.item()?.string, "not json")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
   }
 
-  func test_getSession_willLogTheReinstallClearWithoutThePayload() throws {
+  func test_getSession_willLogAnotherInstallsSessionWithoutThePayload() throws {
     try self.subject.set(self.session("secret-token-value"))
 
     _ = try self.reinstalledStorage().getSession()
 
     let lines = self.logger.messages
-    XCTAssertTrue(lines.contains { $0.contains("earlier install") }, "The clear must be logged.")
+    XCTAssertTrue(lines.contains { $0.contains("another install") }, "Reading as signed out must be logged.")
     XCTAssertFalse(lines.contains { $0.contains("secret-token-value") }, "No log line may carry the token.")
   }
 
-  func test_getSession_willThrowAndKeepItem_whenAReinstallClearCannotDelete() throws {
-    try self.subject.set(self.session("token"))
-    self.store.nextDeleteStatuses = [errSecInteractionNotAllowed]
+  func test_storage_willNotDeleteEachOthersSession_whenTwoProcessesShareTheAccessGroup() throws {
+    // A host whose first keychain-access-groups entry is shared with an extension: both processes
+    // see one item, each with its own container and so its own install id.
+    let appIds = InMemoryAuthInstallIdStore()
+    let extensionIds = InMemoryAuthInstallIdStore()
+    let app = self.reinstalledStorage(installIds: appIds)
+    let appExtension = self.reinstalledStorage(installIds: extensionIds)
+    try app.set(self.session("app-token"))
 
-    XCTAssertThrowsError(try self.reinstalledStorage().getSession()) { error in
-      self.assertSessionStorageFailure(error)
-    }
-    XCTAssertNotNil(self.store.item(), "A failed delete leaves the item; the next read tries again.")
-    XCTAssertFalse(self.logger.messages.contains { $0.contains("earlier install") }, "Nothing was cleared, so nothing may say so.")
+    XCTAssertNil(try appExtension.getSession(), "The extension never uses the app's session.")
+    try appExtension.deleteIfCurrent("extension-token")
+
+    XCTAssertEqual(try app.getSession(), self.parsed("app-token"), "Neither read nor invalidate may sign the app out.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+    XCTAssertNil(extensionIds.tag)
   }
 
   func test_getSession_willThrowAndKeepItem_whenTheReadFails_withoutComparingTags() throws {
@@ -1056,12 +1068,12 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(self.store.item()?.string, self.session("legacy-token"))
   }
 
-  func test_getSession_afterAdoptingAnUntaggedSession_willClearItAfterReinstall() throws {
+  func test_getSession_afterAdoptingAnUntaggedSession_willReturnNilAfterReinstall() throws {
     self.store.seed(data: self.session("legacy-token"))
     _ = try self.subject.getSession()
 
     XCTAssertNil(try self.reinstalledStorage().getSession())
-    XCTAssertTrue(self.store.isEmpty)
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag, "Still the adopting install's item.")
   }
 
   func test_getSession_willStillReturnAnUntaggedSession_whenTaggingFails() throws {
@@ -1077,14 +1089,23 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(self.store.item()?.generic, self.installIds.tag)
   }
 
-  func test_deleteIfCurrent_willClearAnotherInstallsSession() throws {
+  func test_deleteIfCurrent_willSpareAnotherInstallsSession_whateverItsToken() throws {
     try self.subject.set(self.session("token"))
     let reinstalled = self.reinstalledStorage()
 
-    try reinstalled.deleteIfCurrent("unrelated-token")
+    try reinstalled.deleteIfCurrent("token")
 
-    XCTAssertTrue(self.store.isEmpty, "Another install's session is never kept, whatever token it carries.")
-    XCTAssertEqual(self.store.opCounts[.delete], 1)
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("token"), "Not this install's to delete, even with the same token.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+  }
+
+  func test_delete_willRemoveAnotherInstallsSession() throws {
+    // `clearPersistedSession()` still clears whatever is stored.
+    try self.subject.set(self.session("token"))
+
+    try self.reinstalledStorage().delete()
+
+    XCTAssertTrue(self.store.isEmpty)
   }
 
   func test_deleteIfCurrent_willDeleteAnUntaggedSessionWithoutTaggingIt() throws {
@@ -1246,7 +1267,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     }
   }
 
-  func test_storage_withFileInstallIds_willClearTheSessionAfterReinstall() throws {
+  func test_storage_withFileInstallIds_willStartSignedOutAfterReinstall() throws {
     // End to end over the real file: deleting the app deletes the file, while the Keychain item
     // survives.
     try self.withBaseDirectory { base in
@@ -1255,13 +1276,17 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
         store: self.store,
         installIds: FileAuthInstallIdStore(baseDirectory: base)
       )
-      try storage.set(self.session("token"))
-      XCTAssertEqual(try storage.getSession(), self.parsed("token"))
+      try storage.set(self.session("old-install-token"))
+      XCTAssertEqual(try storage.getSession(), self.parsed("old-install-token"))
 
       try FileManager.default.removeItem(at: base)
 
       XCTAssertNil(try storage.getSession())
-      XCTAssertTrue(self.store.isEmpty)
+      XCTAssertFalse(FileManager.default.fileExists(atPath: base.path), "Reading must not create the id.")
+
+      // The reinstalled app's own sign-in replaces the leftover and is restored from then on.
+      try storage.set(self.session("new-install-token"))
+      XCTAssertEqual(try storage.getSession(), self.parsed("new-install-token"))
     }
   }
 

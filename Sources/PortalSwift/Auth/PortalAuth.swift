@@ -773,8 +773,8 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// **A reinstall starts signed out.** Keychain items survive app deletion, so the session is
   /// tied to this install of the app, recorded in `Library/Application Support/PortalSwift`: a
-  /// session persisted by an earlier install is cleared and reads as `nil`, and so does one whose
-  /// install record the app deleted. A session persisted by an SDK version that did not record
+  /// session persisted by an earlier install reads as `nil`, and so does one whose install record
+  /// the app deleted. It is never returned, and the next sign-in replaces it. A session persisted by an SDK version that did not record
   /// the install is kept and tied to this install on the first restore, so updating the app does
   /// not sign users out.
   ///
@@ -791,7 +791,7 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// - Throws: `PortalAuthError.sessionStorageFailure` when the session could not be read
   ///   *this time* (a transient Keychain fault, or an install record that exists but cannot be
-  ///   read), or an unusable or earlier install's entry could not be cleared.
+  ///   read), or an unusable entry could not be cleared.
   public func restoreSession() async throws -> PortalSession? {
     let persisted: PersistedSession?
     do {

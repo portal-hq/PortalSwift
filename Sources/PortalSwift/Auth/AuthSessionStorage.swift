@@ -41,7 +41,8 @@ protocol AuthSessionStorage: AnyObject {
   /// Removes the persisted session only if it still carries `token`.
   ///
   /// A stored session with a positively different token belongs to a newer login and is
-  /// spared. An entry that cannot be decoded is cleared (that is a permanent fault). An entry
+  /// spared, and so is one tagged by another install of the app (the Keychain storage only).
+  /// An entry that cannot be decoded is cleared (that is a permanent fault). An entry
   /// that cannot be *read* is left alone and the failure thrown: a transient fault has not said
   /// whether a newer login owns the slot, and deleting blind could erase that login's session.
   ///
@@ -200,7 +201,7 @@ protocol AuthInstallIdStore: AnyObject {
 /// one that cannot be read: `UserDefaults` reports both as `nil`.
 ///
 /// One id serves every auth environment. A host that deletes this file also drops the id, and
-/// its next launch reads as signed out — the session is cleared, never handed to the wrong
+/// its next launch reads as signed out — the session is ignored, never handed to the wrong
 /// install. A file that is empty or not UTF-8 is treated as no id for the same reason. A file
 /// that exists but cannot be read is not: `current()` throws `sessionStorageFailure`, a
 /// transient fault like a locked Keychain, and `currentOrCreate()` never replaces it, so a
@@ -304,21 +305,28 @@ final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
 /// **Protection.** `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`: readable in the
 /// background once the device has been unlocked after boot and on passcode-less devices,
 /// excluded from backups and device migration so a restored device re-authenticates.
-/// `kSecAttrSynchronizable` and `kSecAttrAccessGroup` are never set — the session does not
-/// travel to iCloud, extensions or app-group siblings. `set(_:)` also carries the
+/// `kSecAttrSynchronizable` and `kSecAttrAccessGroup` are never set, so the session never
+/// travels to iCloud and lands in the host's default access group: the first
+/// `keychain-access-groups` entry, else its app id. A host whose first entry is a group it
+/// shares with an extension or a sibling app exposes the item to them; they read it as another
+/// install's (see **One install**) and never delete it. `set(_:)` also carries the
 /// accessibility attribute on the update path so an item written under a different
 /// protection class by an older build is migrated rather than silently preserved.
 ///
 /// **One install.** Keychain items are not deleted with the app, so every write tags the item
 /// with this install's id (`kSecAttrGeneric`, from `AuthInstallIdStore`). A read that finds an
 /// item tagged by another install — or any tagged item while this install has no id yet, which
-/// is what a fresh install after a deletion looks like — deletes it and reads as signed out,
-/// logged without the payload. An id that exists but cannot be read is a transient fault like
-/// a locked Keychain: the read throws and the item is kept. The tag is an item attribute, not
+/// is what a fresh install after a deletion looks like — reads as signed out and leaves the item
+/// alone: `deleteIfCurrent(_:)` spares it too, the next `set(_:)` replaces it and re-tags it, and
+/// `delete()` still removes it. It is not deleted on read because the reader cannot tell a
+/// deleted install's leftover from the session of a process that shares the access group, and
+/// deleting the latter would sign that process out. An id that exists but cannot be read is a
+/// transient fault like a locked Keychain: the read throws. The tag is an item attribute, not
 /// part of the payload, so the stored JSON stays the shape the other SDKs write. An item with
 /// no tag was written by an SDK version that did not tag sessions: an update and a reinstall
 /// look the same for it, so it is kept and tagged on the first `getSession()` (best effort; a
 /// failed tag is retried on the next read), which keeps app updates from signing users out.
+/// With a shared access group, whichever process reads an untagged item first tags it.
 ///
 /// **Fault taxonomy.** `errSecItemNotFound` and an undecodable entry are permanent: the
 /// former reads as `nil`, the latter is deleted (self-heal) and then reads as `nil`, with a
@@ -416,8 +424,11 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
       // Positively different: a newer login already re-keyed the slot. Spare it.
       return
     case .cleared:
-      // The entry was unusable or another install's, and `_read()` has already deleted it
-      // under this same lock hold; a second delete would only be a second chance to fail.
+      // The entry was unusable and `_read()` has already deleted it under this same lock
+      // hold; a second delete would only be a second chance to fail.
+      return
+    case .foreign:
+      // Another install's (or another process's) session, whatever token it carries. Spare it.
       return
     case .absent:
       // Nothing is stored, so there is nothing to delete.
@@ -434,8 +445,10 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
   private enum ReadOutcome {
     /// Nothing is stored.
     case absent
-    /// An unusable entry, or another install's, was found and has been deleted.
+    /// An unusable entry was found and has been deleted.
     case cleared
+    /// A session tagged by another install of the app, left in place.
+    case foreign
     /// A usable session of this install. `isUntagged` when it was written by an SDK version
     /// that did not tag sessions with the install id.
     case session(PersistedSession, isUntagged: Bool)
@@ -448,7 +461,7 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
         self._adopt()
       }
       return session
-    case .absent, .cleared:
+    case .absent, .cleared, .foreign:
       return nil
     }
   }
@@ -472,14 +485,13 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     let installTag = item?[kSecAttrGeneric as String] as? Data
 
     // Another install's session — or any tagged one while this install has no id, which is a
-    // fresh install after a deletion. Permanent: this install must never use it, so clear it.
-    // Checked before the payload is decoded, because whether it parses does not matter.
-    // An id that cannot be read throws here, before anything is deleted.
+    // fresh install after a deletion. This install must never use it, but it is not deleted:
+    // the same tag mismatch is what a process sharing the access group sees. Checked before the
+    // payload is decoded, because whether it parses does not matter here. An id that cannot be
+    // read throws, so a locked device never reads as a fresh install.
     if let installTag = installTag, try installTag != self.currentInstallTag() {
-      try self._delete()
-      // Logged only once the delete has succeeded, and without the payload, like the self-heal.
-      self.logger.info("KeychainAuthSessionStorage.getSession() - A session persisted by an earlier install of this app was cleared; reading as signed out.")
-      return .cleared
+      self.logger.info("KeychainAuthSessionStorage.read() - The persisted session belongs to another install of this app; reading as signed out.")
+      return .foreign
     }
 
     // A success without data, non-UTF-8 bytes, or a payload the codec rejects are all
