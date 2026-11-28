@@ -776,7 +776,9 @@ public final class PortalAuth: @unchecked Sendable {
   /// session persisted by an earlier install reads as `nil`, and so does one whose install record
   /// the app deleted. It is never returned, and the next sign-in replaces it. A session persisted
   /// by an SDK version that did not record the install is kept and tied to this install on the
-  /// first restore, so updating the app does not sign users out.
+  /// first restore, so updating the app does not sign users out. Until that first restore such a
+  /// session is also restored after a reinstall; to rule that out, call `clearPersistedSession()`
+  /// on the first launch after install, before starting any sign-in.
   ///
   /// If the app shares its default Keychain access group with an extension or another app that
   /// also signs in to this auth environment, they share one session slot: the last to sign in
