@@ -201,7 +201,11 @@ protocol AuthInstallIdStore: AnyObject {
 ///
 /// One id serves every auth environment. A host that deletes this file also drops the id, and
 /// its next launch reads as signed out — the session is cleared, never handed to the wrong
-/// install. An unreadable or empty file is treated as no id for the same reason.
+/// install. A file that is empty or not UTF-8 is treated as no id for the same reason. A file
+/// that exists but cannot be read is not: `current()` throws `sessionStorageFailure`, a
+/// transient fault like a locked Keychain, and `currentOrCreate()` never replaces it, so a
+/// locked device never looks like a fresh install. Any other contents are used as the id as
+/// they are: only this install writes the file, so they can match only a tag this install wrote.
 final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
   /// The directory under Application Support the id lives in.
   static let directoryName = "PortalSwift"
