@@ -503,7 +503,10 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     }
 
     let item = result as? [String: Any]
-    let installTag = item?[kSecAttrGeneric as String] as? Data
+    // An empty tag counts as no tag. The SDK never writes one, and reading it as another install's
+    // would sign out every user whose session predates tagging if the Keychain ever reported a
+    // missing attribute as empty data.
+    let installTag = (item?[kSecAttrGeneric as String] as? Data).flatMap { $0.isEmpty ? nil : $0 }
 
     // Another install's session — or any tagged one while this install has no id, which is a
     // fresh install after a deletion. This install must never use it, but it is not deleted:

@@ -1087,6 +1087,13 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(self.store.item()?.string, self.session("legacy-token"))
   }
 
+  func test_getSession_willTreatAnEmptyTagAsUntagged() throws {
+    self.store.seed(data: self.session("legacy-token"), generic: Data())
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"), "An empty tag must never sign an updating user out.")
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag, "It is adopted like an untagged session.")
+  }
+
   func test_getSession_afterAdoptingAnUntaggedSession_willReturnNilAfterReinstall() throws {
     self.store.seed(data: self.session("legacy-token"))
     _ = try self.subject.getSession()
