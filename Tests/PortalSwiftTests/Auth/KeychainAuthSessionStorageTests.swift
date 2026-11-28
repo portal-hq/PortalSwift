@@ -1051,11 +1051,13 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   func test_getSession_willThrowAndKeepItem_whenTheReadFails_withoutComparingTags() throws {
     try self.subject.set(self.session("token"))
     self.store.nextCopyStatuses = [errSecInteractionNotAllowed]
+    let reinstalledIds = InMemoryAuthInstallIdStore()
 
-    XCTAssertThrowsError(try self.reinstalledStorage().getSession()) { error in
+    XCTAssertThrowsError(try self.reinstalledStorage(installIds: reinstalledIds).getSession()) { error in
       self.assertSessionStorageFailure(error)
     }
     XCTAssertNotNil(self.store.item(), "A locked Keychain is transient: the item must survive it.")
+    XCTAssertEqual(reinstalledIds.readCount, 0, "Nothing was read, so no tag may be compared.")
   }
 
   func test_set_afterReinstall_willReplaceAndRetagTheItem() throws {
@@ -1281,6 +1283,29 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
       var isDirectory: ObjCBool = false
       XCTAssertTrue(FileManager.default.fileExists(atPath: ids.fileURL.path, isDirectory: &isDirectory))
       XCTAssertTrue(isDirectory.boolValue, "An id that cannot be read must never be overwritten.")
+    }
+  }
+
+  func test_fileInstallIdStore_willThrow_whenTheIdFileIsNotReadable_andNeverReplaceIt() throws {
+    // A file the process may not read fails with a permission error, the same error family a
+    // protected file gives while the device is locked.
+    try self.withBaseDirectory { base in
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+      let created = try ids.currentOrCreate()
+      try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: ids.fileURL.path)
+      defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: ids.fileURL.path) }
+
+      XCTAssertThrowsError(try ids.current()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
+      }
+      XCTAssertThrowsError(try ids.currentOrCreate()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
+      }
+
+      try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: ids.fileURL.path)
+      XCTAssertEqual(try ids.current(), created, "The id must be unchanged once it is readable again.")
     }
   }
 
