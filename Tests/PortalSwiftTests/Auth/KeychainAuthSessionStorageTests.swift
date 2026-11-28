@@ -27,10 +27,11 @@ import XCTest
 /// could not parse, and that path must never echo the payload — which holds the client session
 /// token — into a log line.
 final class KeychainAuthSessionStorageTests: XCTestCase {
-  /// A lock-guarded set of the ids concurrent callers saw.
+  /// A lock-guarded set of the ids concurrent callers saw, and how many calls failed.
   private final class IdSet: @unchecked Sendable {
     private let lock = NSLock()
     private var _values: Set<String> = []
+    private var _failures = 0
 
     var values: Set<String> {
       self.lock.lock()
@@ -38,10 +39,22 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
       return self._values
     }
 
+    var failures: Int {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      return self._failures
+    }
+
     func insert(_ value: String) {
       self.lock.lock()
       defer { self.lock.unlock() }
       self._values.insert(value)
+    }
+
+    func recordFailure() {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      self._failures += 1
     }
   }
 
@@ -994,12 +1007,39 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   }
 
   func test_getSession_willReturnNil_forAnotherInstallsEntry_evenWhenItIsUnparseable() throws {
-    // Whose it is decides first: another install's entry is left alone, parseable or not.
-    self.store.seed(data: "not json", generic: Data("another-install".utf8))
+    // Whose it is decides first: another install's entry is left alone, parseable or not —
+    // whether this install has no id yet or a different one.
+    for installId in [nil, "this-install"] {
+      self.store.reset()
+      self.installIds = InMemoryAuthInstallIdStore(id: installId)
+      self.subject = self.storage()
+      self.store.seed(data: "not json", generic: Data("another-install".utf8))
 
-    XCTAssertNil(try self.subject.getSession())
-    XCTAssertEqual(self.store.item()?.string, "not json")
-    XCTAssertEqual(self.store.opCounts[.delete], 0)
+      XCTAssertNil(try self.subject.getSession(), "install id: \(installId ?? "none")")
+      XCTAssertEqual(self.store.item()?.string, "not json", "install id: \(installId ?? "none")")
+      XCTAssertEqual(self.store.opCounts[.delete], 0, "install id: \(installId ?? "none")")
+    }
+  }
+
+  func test_set_willThrowAndWriteNothing_whenTheInstallIdCannotBeRead() throws {
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "unreadable")
+
+    XCTAssertThrowsError(try self.subject.set(self.session("token"))) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertTrue(self.store.isEmpty)
+    XCTAssertEqual(self.store.opCounts[.add], 0)
+    XCTAssertEqual(self.installIds.createCount, 0, "An id that cannot be read must never be replaced by a new one.")
+  }
+
+  func test_getSession_willStillReturnAnUntaggedSession_whenTheInstallIdCannotBeRead() throws {
+    self.store.seed(data: self.session("legacy-token"))
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "unreadable")
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"), "Tagging is best effort; the session is still this install's.")
+    XCTAssertEqual(self.store.opCounts[.update], 0)
+    XCTAssertNil(self.store.item()?.generic)
+    XCTAssertTrue(self.logger.entries.contains { $0.level == .warn && $0.message.contains("could not be read or saved") })
   }
 
   func test_getSession_willLogAnotherInstallsSessionWithoutThePayload() throws {
@@ -1345,11 +1385,14 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
       let ids = IdSet()
 
       DispatchQueue.concurrentPerform(iterations: 64) { index in
-        if let id = try? instances[index % instances.count].currentOrCreate() {
-          ids.insert(id)
+        do {
+          try ids.insert(instances[index % instances.count].currentOrCreate())
+        } catch {
+          ids.recordFailure()
         }
       }
 
+      XCTAssertEqual(ids.failures, 0, "No caller may fail while another is creating the id.")
       XCTAssertEqual(ids.values.count, 1)
       XCTAssertEqual(try FileAuthInstallIdStore(baseDirectory: base).current(), ids.values.first)
     }
