@@ -1127,6 +1127,22 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(self.store.opCounts[.update], 0)
   }
 
+  func test_deleteIfCurrent_willThrowAndKeepItem_whenTheInstallIdCannotBeRead() throws {
+    // Whose session it is cannot be decided, so it is not deleted blind — the same rule as a
+    // Keychain read that fails.
+    try self.subject.set(self.session("token"))
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "locked")
+
+    XCTAssertThrowsError(try self.subject.deleteIfCurrent("token")) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+
+    self.installIds.readError = nil
+    try self.subject.deleteIfCurrent("token")
+    XCTAssertTrue(self.store.isEmpty, "Once the id is readable the retry deletes it.")
+  }
+
   func test_getSession_willThrowAndKeepItem_whenTheInstallIdCannotBeRead() throws {
     // A host whose id exists but is unreadable right now (a locked device) must not be read as a
     // fresh install: that would delete a session that belongs to it.
@@ -1227,10 +1243,14 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
 
       XCTAssertThrowsError(try ids.current()) { error in
         let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
         XCTAssertFalse(message.contains(base.path), "The error must not carry the file path.")
       }
+      // Failing on the read, not on a save, is what proves it never tried to replace the id: an
+      // atomic write onto this directory would fail too, so the check below alone could not tell.
       XCTAssertThrowsError(try ids.currentOrCreate()) { error in
-        self.assertSessionStorageFailure(error)
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
       }
       var isDirectory: ObjCBool = false
       XCTAssertTrue(FileManager.default.fileExists(atPath: ids.fileURL.path, isDirectory: &isDirectory))
