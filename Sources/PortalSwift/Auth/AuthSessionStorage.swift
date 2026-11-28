@@ -18,8 +18,8 @@ import Security
 /// once against it and tested against an in-memory double. Two rules every implementation
 /// must keep, because the callers rely on them:
 ///
-/// - **Permanent faults self-heal, transient faults throw.** An entry that cannot be decoded
-///   is deleted and read as "signed out"; a backend that cannot be reached (a locked
+/// - **Permanent faults self-heal, transient faults throw.** An entry of this install's that
+///   cannot be decoded is deleted and read as "signed out"; a backend that cannot be reached (a locked
 ///   Keychain, a missing entitlement) throws and leaves the entry alone. Signing a user out
 ///   because the device happened to be locked would be a bug, not a recovery.
 /// - **`deleteIfCurrent(_:)` is one atomic compare-and-delete.** A stale session must never
@@ -41,7 +41,8 @@ protocol AuthSessionStorage: AnyObject {
   /// Removes the persisted session only if it still carries `token`.
   ///
   /// A stored session with a positively different token belongs to a newer login and is
-  /// spared. An entry that cannot be decoded is cleared (that is a permanent fault). An entry
+  /// spared, and so is one tagged by another install of the app (the Keychain storage only).
+  /// An entry of this install's that cannot be decoded is cleared (a permanent fault). An entry
   /// that cannot be *read* is left alone and the failure thrown: a transient fault has not said
   /// whether a newer login owns the slot, and deleting blind could erase that login's session.
   ///
@@ -165,6 +166,153 @@ final class SecItemAuthKeychainItemStore: AuthKeychainItemStore {
   }
 }
 
+// MARK: - AuthInstallIdStore
+
+/// The identity of this install of the host app, which `KeychainAuthSessionStorage` tags every
+/// session it writes with.
+///
+/// It exists because Keychain items outlive the app: deleting the app leaves the session item
+/// behind, and a reinstall could otherwise read the previous install's session. The id lives in
+/// storage the system deletes with the app, so a reinstall starts without one and the session
+/// item it finds carries a tag that does not match.
+///
+/// "No id" and "the id cannot be read right now" must stay distinct: with no id a tagged session
+/// reads as signed out, so mistaking the second for the first would sign a user out over a
+/// transient read error.
+protocol AuthInstallIdStore: AnyObject {
+  /// This install's id, or `nil` when this install has not created one yet. Never creates one.
+  ///
+  /// - Throws: `PortalAuthError.sessionStorageFailure` when an id exists but cannot be read.
+  func current() throws -> String?
+
+  /// This install's id, created and saved on first use. Concurrent first calls return one id.
+  ///
+  /// - Throws: `PortalAuthError.sessionStorageFailure` when an existing id cannot be read (it is
+  ///   never replaced then) or a new one cannot be saved.
+  func currentOrCreate() throws -> String
+}
+
+/// The production `AuthInstallIdStore`: a random UUID string in
+/// `Library/Application Support/PortalSwift/auth-install-id`, which iOS deletes with the app.
+///
+/// A file rather than `UserDefaults` for two reasons. Its protection class is set explicitly to
+/// `completeUntilFirstUserAuthentication`, matching the session item's
+/// `AfterFirstUnlockThisDeviceOnly`, so whenever the item can be read the id can be too, even
+/// in a host whose default data protection is stricter. And a missing file is told apart from
+/// one that cannot be read: `UserDefaults` reports both as `nil`.
+///
+/// One id serves every auth environment. A host that deletes this file also drops the id, and
+/// its next launch reads as signed out — the session is ignored, never handed to the wrong
+/// install. A file that is empty or not UTF-8 is treated as no id for the same reason. A file
+/// that exists but cannot be read is not: `current()` throws `sessionStorageFailure`, a
+/// transient fault like a locked Keychain, and `currentOrCreate()` never replaces it, so a read
+/// error never looks like a fresh install. The file's protection class matches the session
+/// item's, so the device being locked is not one of those errors: before the first unlock the
+/// item read fails first, and after it both are readable. Any other contents are used as the id as
+/// they are: only this install writes the file, so they can match only a tag this install wrote.
+final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
+  /// The directory under Application Support the id lives in.
+  static let directoryName = "PortalSwift"
+
+  /// The file the id is stored in.
+  static let fileName = "auth-install-id"
+
+  /// Process-global, so two storages creating the id at once agree on one.
+  private static let lock = NSLock()
+
+  /// The file this instance reads and writes.
+  let fileURL: URL
+
+  private let fileManager = FileManager.default
+
+  /// - Parameter baseDirectory: The directory `PortalSwift/auth-install-id` is created under;
+  ///   Application Support by default. Performs no I/O.
+  init(baseDirectory: URL? = nil) {
+    let base = baseDirectory
+      ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+      ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
+    self.fileURL = base
+      .appendingPathComponent(Self.directoryName, isDirectory: true)
+      .appendingPathComponent(Self.fileName, isDirectory: false)
+  }
+
+  func current() throws -> String? {
+    Self.lock.lock()
+    defer { Self.lock.unlock() }
+    return try self._current()
+  }
+
+  func currentOrCreate() throws -> String {
+    Self.lock.lock()
+    defer { Self.lock.unlock() }
+
+    if let existing = try self._current() {
+      return existing
+    }
+
+    let created = UUID().uuidString
+    let directory = self.fileURL.deletingLastPathComponent()
+    do {
+      // The parents (Application Support, which a fresh install may not have yet) are the host's:
+      // created without attributes so they keep the host's default protection, which new files
+      // in them can inherit. Only the SDK's own directory gets the explicit class.
+      try self.fileManager.createDirectory(
+        at: directory.deletingLastPathComponent(),
+        withIntermediateDirectories: true,
+        attributes: nil
+      )
+      try self.fileManager.createDirectory(
+        at: directory,
+        withIntermediateDirectories: true,
+        attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+      )
+      try Data(created.utf8).write(to: self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    } catch {
+      throw PortalAuthError.sessionStorageFailure(message: "This install's id could not be saved (\(Self.describe(error))).")
+    }
+    return created
+  }
+
+  // MARK: Un-locked body (caller holds `lock`)
+
+  private func _current() throws -> String? {
+    // Read directly rather than checking `fileExists` first: that returns `false` for any failure
+    // to check, not only a missing file, and "no id" is the answer that ignores a tagged session.
+    // Only "no such file" means no id; every other failure is transient.
+    let data: Data
+    do {
+      data = try Data(contentsOf: self.fileURL)
+    } catch {
+      if Self.isNoSuchFile(error) {
+        return nil
+      }
+      throw PortalAuthError.sessionStorageFailure(message: "This install's id could not be read (\(Self.describe(error))).")
+    }
+
+    guard let value = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !value.isEmpty
+    else {
+      return nil
+    }
+    return value
+  }
+
+  /// `true` only for a file (or a parent directory) that does not exist.
+  private static func isNoSuchFile(_ error: Error) -> Bool {
+    let nsError = error as NSError
+    if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFileReadNoSuchFileError {
+      return true
+    }
+    return nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT)
+  }
+
+  /// The error's domain and code, never its path-bearing description.
+  private static func describe(_ error: Error) -> String {
+    let nsError = error as NSError
+    return "\(nsError.domain) \(nsError.code)"
+  }
+}
+
 // MARK: - KeychainAuthSessionStorage
 
 /// Keychain-backed `AuthSessionStorage`, one generic-password item per auth environment.
@@ -179,10 +327,35 @@ final class SecItemAuthKeychainItemStore: AuthKeychainItemStore {
 /// **Protection.** `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`: readable in the
 /// background once the device has been unlocked after boot and on passcode-less devices,
 /// excluded from backups and device migration so a restored device re-authenticates.
-/// `kSecAttrSynchronizable` and `kSecAttrAccessGroup` are never set — the session does not
-/// travel to iCloud, extensions or app-group siblings. `set(_:)` also carries the
+/// `kSecAttrSynchronizable` and `kSecAttrAccessGroup` are never set, so the session never
+/// travels to iCloud and lands in the host's default access group: the first
+/// `keychain-access-groups` entry, else its app id. A host whose first entry is a group it
+/// shares with an extension or a sibling app exposes the item to them, and there is still one
+/// session per auth environment between them: the process that signed in last owns it, and the
+/// other reads it as another install's (see **One install**), so as signed out, never deleting
+/// it, until it signs in again and takes the slot back. `set(_:)` also carries the
 /// accessibility attribute on the update path so an item written under a different
 /// protection class by an older build is migrated rather than silently preserved.
+///
+/// **One install.** Keychain items are not deleted with the app, so every write tags the item
+/// with this install's id (`kSecAttrGeneric`, from `AuthInstallIdStore`). A read that finds an
+/// item tagged by another install — or any tagged item while this install has no id yet, which
+/// is what a fresh install after a deletion looks like — reads as signed out and leaves the item
+/// alone: `deleteIfCurrent(_:)` spares it too, the next `set(_:)` replaces it and re-tags it, and
+/// `delete()` still removes it. It is not deleted on read because the reader cannot tell a
+/// deleted install's leftover from the session of a process that shares the access group, and
+/// deleting the latter would sign that process out. An id that exists but cannot be read is a
+/// transient fault like a locked Keychain: the read throws. The tag is an item attribute, not
+/// part of the payload, so the stored JSON stays the shape the other SDKs write. An item with
+/// no tag was written by an SDK version that did not tag sessions: an update and a reinstall
+/// look the same for it, so it is kept and tagged on the first `getSession()` (best effort; a
+/// failed tag is retried on the next read), which keeps app updates from signing users out.
+/// With a shared access group, whichever process reads an untagged item first tags it; the
+/// tag-only update cannot be made conditional on the item it read, so a sibling's sign-in that
+/// lands between that read and the update keeps its session under the reader's tag. A sign-in
+/// through an SDK version that does not tag (a reinstall onto an older build) replaces the data
+/// but keeps whatever tag the item had, so after the next update to a tagging version that
+/// session reads as another install's and the user signs in once more.
 ///
 /// **Fault taxonomy.** `errSecItemNotFound` and an undecodable entry are permanent: the
 /// former reads as `nil`, the latter is deleted (self-heal) and then reads as `nil`, with a
@@ -230,14 +403,20 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
   let service: String
 
   private let store: AuthKeychainItemStore
+  private let installIds: AuthInstallIdStore
   private let lock: NSLock
   private let logger = PortalLogger.shared
 
-  /// Creates storage for `authEnvironmentId`. Performs no Keychain I/O; the first `SecItem`
-  /// call happens on the first `getSession()` / `set(_:)` / `delete()`.
-  init(authEnvironmentId: String, store: AuthKeychainItemStore = SecItemAuthKeychainItemStore()) {
+  /// Creates storage for `authEnvironmentId`. Performs no Keychain or file I/O; the first call
+  /// happens on the first `getSession()` / `set(_:)` / `delete()`.
+  init(
+    authEnvironmentId: String,
+    store: AuthKeychainItemStore = SecItemAuthKeychainItemStore(),
+    installIds: AuthInstallIdStore = FileAuthInstallIdStore()
+  ) {
     self.service = "\(Self.servicePrefix).\(authEnvironmentId)"
     self.store = store
+    self.installIds = installIds
     self.lock = Self.lock(forService: self.service)
   }
 
@@ -270,17 +449,21 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     // erase that login's session; failing instead leaves it intact and tells the caller
     // (through `KeychainPortalSession.invalidate()`) that a stale copy may remain on disk.
     switch try self._read() {
-    case let .session(current) where current.clientSessionToken != token:
+    case let .session(current, _) where current.clientSessionToken != token:
       // Positively different: a newer login already re-keyed the slot. Spare it.
       return
     case .cleared:
       // The entry was unusable and `_read()` has already deleted it under this same lock
       // hold; a second delete would only be a second chance to fail.
       return
+    case .foreign:
+      // Another install's (or another process's) session, whatever token it carries. Spare it.
+      return
     case .absent:
       // Nothing is stored, so there is nothing to delete.
       return
     case .session:
+      // Deleted without being tagged first, even when it has no tag: tagging is for keeping.
       try self._delete()
     }
   }
@@ -293,15 +476,21 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     case absent
     /// An unusable entry was found and has been deleted.
     case cleared
-    /// A usable session.
-    case session(PersistedSession)
+    /// A session tagged by another install of the app, left in place.
+    case foreign
+    /// A usable session of this install. `isUntagged` when it was written by an SDK version
+    /// that did not tag sessions with the install id.
+    case session(PersistedSession, isUntagged: Bool)
   }
 
   private func _getSession() throws -> PersistedSession? {
     switch try self._read() {
-    case let .session(session):
+    case let .session(session, isUntagged):
+      if isUntagged {
+        self._adopt()
+      }
       return session
-    case .absent, .cleared:
+    case .absent, .cleared, .foreign:
       return nil
     }
   }
@@ -321,9 +510,25 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
       throw PortalAuthError.sessionStorageFailure(message: "The persisted session could not be read (OSStatus \(status)).")
     }
 
+    let item = result as? [String: Any]
+    // An empty tag counts as no tag. The SDK never writes one, and reading it as another install's
+    // would sign out every user whose session predates tagging if the Keychain ever reported a
+    // missing attribute as empty data.
+    let installTag = (item?[kSecAttrGeneric as String] as? Data).flatMap { $0.isEmpty ? nil : $0 }
+
+    // Another install's session — or any tagged one while this install has no id, which is a
+    // fresh install after a deletion. This install must never use it, but it is not deleted:
+    // the same tag mismatch is what a process sharing the access group sees. Checked before the
+    // payload is decoded, because whether it parses does not matter here. An id that cannot be
+    // read throws, so a read error never reads as a fresh install.
+    if let installTag = installTag, try installTag != self.currentInstallTag() {
+      self.logger.info("KeychainAuthSessionStorage.read() - The persisted session belongs to another install of this app; reading as signed out.")
+      return .foreign
+    }
+
     // A success without data, non-UTF-8 bytes, or a payload the codec rejects are all
     // permanent: nothing about a retry can make the entry usable, so clear it.
-    guard let data = result as? Data,
+    guard let data = item?[kSecValueData as String] as? Data,
           let raw = String(data: data, encoding: .utf8),
           let session = try? PersistedSessionCodec.decode(raw)
     else {
@@ -334,19 +539,47 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
       return .cleared
     }
 
-    return .session(session)
+    return .session(session, isUntagged: installTag == nil)
+  }
+
+  /// Tags an untagged session with this install's id, so a later reinstall recognises it as
+  /// another install's. Best effort: the session is already read and returned either way, and a
+  /// failed tag is logged and retried on the next read.
+  private func _adopt() {
+    let installTag: Data
+    do {
+      installTag = try Data(self.installIds.currentOrCreate().utf8)
+    } catch {
+      self.logger.warn("KeychainAuthSessionStorage.getSession() - This install's id could not be read or saved (\(type(of: error))); tagging the persisted session on the next read.")
+      return
+    }
+    let status = self.store.update(self.baseQuery, [kSecAttrGeneric as String: installTag])
+    guard status == errSecSuccess else {
+      self.logger.warn("KeychainAuthSessionStorage.getSession() - The persisted session could not be tagged with this install (OSStatus \(status)); retrying on the next read.")
+      return
+    }
+    self.logger.debug("KeychainAuthSessionStorage.getSession() - Tagged a session persisted by an earlier SDK version with this install.")
   }
 
   private func _set(_ raw: String) throws {
     let data = Data(raw.utf8)
-    var status = self.store.add(self.addAttributes(data))
+    // Created before the write, so the item never lands untagged. If the write then fails the
+    // id simply stays for the next one.
+    let installTag: Data
+    do {
+      installTag = try Data(self.installIds.currentOrCreate().utf8)
+    } catch {
+      self.logger.error("KeychainAuthSessionStorage.set() - This install's id could not be read or saved (\(type(of: error))).")
+      throw Self.installIdFailure(error, message: "The session could not be persisted")
+    }
+    var status = self.store.add(self.addAttributes(data, installTag: installTag))
 
     if status == errSecDuplicateItem {
-      let updateStatus = self.store.update(self.baseQuery, self.updateAttributes(data))
+      let updateStatus = self.store.update(self.baseQuery, self.updateAttributes(data, installTag: installTag))
       if updateStatus == errSecItemNotFound {
         // The item vanished between the add and the update. Retry the add exactly once;
         // a second duplicate is reported as a failure rather than looping.
-        status = self.store.add(self.addAttributes(data))
+        status = self.store.add(self.addAttributes(data, installTag: installTag))
       } else {
         status = updateStatus
       }
@@ -366,6 +599,26 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     }
   }
 
+  /// This install's id as the item stores it, or `nil` when there is none.
+  ///
+  /// - Throws: `PortalAuthError.sessionStorageFailure` when the id exists but cannot be read.
+  private func currentInstallTag() throws -> Data? {
+    do {
+      return try self.installIds.current().map { Data($0.utf8) }
+    } catch {
+      self.logger.error("KeychainAuthSessionStorage.read() - This install's id could not be read (\(type(of: error))).")
+      throw Self.installIdFailure(error, message: "The persisted session could not be read")
+    }
+  }
+
+  /// A `PortalAuthError` from the install id store as is; anything else wrapped by type name.
+  private static func installIdFailure(_ error: Error, message: String) -> PortalAuthError {
+    if let authError = error as? PortalAuthError {
+      return authError
+    }
+    return .sessionStorageFailure(message: "\(message): this install's id is unavailable (\(type(of: error))).")
+  }
+
   // MARK: Queries
 
   /// Class, service and account: the identity of the one item this instance owns.
@@ -377,29 +630,34 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     ]
   }
 
-  /// `baseQuery` asking for the item's data. It does not filter on accessibility, so an
-  /// item written under an older protection class is still found (and migrated on the next
-  /// `set(_:)`).
+  /// `baseQuery` asking for the item's data and attributes (for the install tag), which
+  /// `SecItemCopyMatching` returns as one dictionary. It does not filter on accessibility, so
+  /// an item written under an older protection class is still found (and migrated on the next
+  /// `set(_:)`), nor on the install tag, so another install's item is found and read as signed
+  /// out rather than missed.
   private var readQuery: [String: Any] {
     var query = self.baseQuery
     query[kSecReturnData as String] = true
+    query[kSecReturnAttributes as String] = true
     query[kSecMatchLimit as String] = kSecMatchLimitOne as String
     return query
   }
 
-  private func addAttributes(_ data: Data) -> [String: Any] {
+  private func addAttributes(_ data: Data, installTag: Data) -> [String: Any] {
     var attributes = self.baseQuery
     attributes[kSecValueData as String] = data
     attributes[kSecAttrAccessible as String] = Self.accessibility
+    attributes[kSecAttrGeneric as String] = installTag
     return attributes
   }
 
-  /// Carries the accessibility as well as the data so an update migrates the protection
-  /// class instead of preserving whatever the existing item had.
-  private func updateAttributes(_ data: Data) -> [String: Any] {
+  /// Carries the accessibility and the install tag as well as the data, so an update migrates
+  /// the protection class and re-tags the item instead of preserving whatever it had.
+  private func updateAttributes(_ data: Data, installTag: Data) -> [String: Any] {
     [
       kSecValueData as String: data,
-      kSecAttrAccessible as String: Self.accessibility
+      kSecAttrAccessible as String: Self.accessibility,
+      kSecAttrGeneric as String: installTag
     ]
   }
 }

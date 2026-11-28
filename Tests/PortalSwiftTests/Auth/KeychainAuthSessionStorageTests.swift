@@ -27,6 +27,37 @@ import XCTest
 /// could not parse, and that path must never echo the payload — which holds the client session
 /// token — into a log line.
 final class KeychainAuthSessionStorageTests: XCTestCase {
+  /// A lock-guarded set of the ids concurrent callers saw, and how many calls failed.
+  private final class IdSet: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _values: Set<String> = []
+    private var _failures = 0
+
+    var values: Set<String> {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      return self._values
+    }
+
+    var failures: Int {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      return self._failures
+    }
+
+    func insert(_ value: String) {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      self._values.insert(value)
+    }
+
+    func recordFailure() {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      self._failures += 1
+    }
+  }
+
   /// A lock-guarded slot for an error raised on a `Thread`, which cannot `throw`.
   private final class ErrorBox: @unchecked Sendable {
     private let lock = NSLock()
@@ -47,6 +78,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   }
 
   private var store = InMemoryAuthKeychainItemStore()
+  private var installIds = InMemoryAuthInstallIdStore()
   private var logger = RecordingLogger()
   private var subject = KeychainAuthSessionStorage(
     authEnvironmentId: AuthTestFixtures.authEnvironmentId,
@@ -57,6 +89,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     try super.setUpWithError()
     CredentialInvalidationRegistry.shared.resetForTesting()
     self.store = InMemoryAuthKeychainItemStore()
+    self.installIds = InMemoryAuthInstallIdStore()
     self.subject = self.storage()
     self.logger = RecordingLogger()
     self.logger.install()
@@ -75,7 +108,13 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   /// A sibling storage on the same in-memory store, so two instances (or two environments)
   /// can be raced against one another.
   private func storage(_ authEnvironmentId: String = AuthTestFixtures.authEnvironmentId) -> KeychainAuthSessionStorage {
-    KeychainAuthSessionStorage(authEnvironmentId: authEnvironmentId, store: self.store)
+    KeychainAuthSessionStorage(authEnvironmentId: authEnvironmentId, store: self.store, installIds: self.installIds)
+  }
+
+  /// A storage on the same Keychain as `subject` after the app was deleted and installed again:
+  /// the item survives, the install id does not.
+  private func reinstalledStorage(installIds: InMemoryAuthInstallIdStore = InMemoryAuthInstallIdStore()) -> KeychainAuthSessionStorage {
+    KeychainAuthSessionStorage(authEnvironmentId: AuthTestFixtures.authEnvironmentId, store: self.store, installIds: installIds)
   }
 
   /// The Keychain service `authEnvironmentId` maps to.
@@ -339,10 +378,12 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(query[kSecAttrService as String] as? String, self.expectedService)
     XCTAssertEqual(query[kSecAttrAccount as String] as? String, KeychainAuthSessionStorage.accountName)
     XCTAssertEqual(query[kSecReturnData as String] as? Bool, true)
+    XCTAssertEqual(query[kSecReturnAttributes as String] as? Bool, true, "The install tag is an attribute, so the read must return attributes.")
     XCTAssertEqual(query[kSecMatchLimit as String] as? String, kSecMatchLimitOne as String)
     XCTAssertNil(query[kSecAttrSynchronizable as String])
     XCTAssertNil(query[kSecAttrAccessGroup as String])
     XCTAssertNil(query[kSecAttrAccessible as String], "Filtering the read by protection class would hide a migratable item.")
+    XCTAssertNil(query[kSecAttrGeneric as String], "Filtering the read by install tag would hide another install's item instead of reading it as signed out.")
   }
 
   func test_getSession_willFindItemWrittenUnderOlderProtectionClass() throws {
@@ -370,6 +411,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
       attributes[kSecAttrAccessible as String] as? String,
       kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String
     )
+    XCTAssertEqual(attributes[kSecAttrGeneric as String] as? Data, self.installIds.tag)
     XCTAssertNil(attributes[kSecAttrSynchronizable as String])
     XCTAssertNil(attributes[kSecAttrAccessGroup as String])
   }
@@ -390,6 +432,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
       call.attributes[kSecAttrAccessible as String] as? String,
       kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String
     )
+    XCTAssertEqual(call.attributes[kSecAttrGeneric as String] as? Data, self.installIds.tag)
     XCTAssertEqual(try self.subject.getSession(), self.parsed("new-token"))
   }
 
@@ -906,6 +949,476 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
 
     XCTAssertGreaterThan(self.store.updateCalls.count, 0, "The duplicate/update leg must be exercised too.")
     self.assertNoForbiddenAttributes()
+  }
+
+  // MARK: - Install binding
+
+  func test_set_willCreateTheInstallIdAndTagTheItem() throws {
+    XCTAssertNil(self.installIds.tag)
+
+    try self.subject.set(self.session("token"))
+
+    XCTAssertEqual(self.installIds.createCount, 1)
+    let tag = try XCTUnwrap(self.installIds.tag)
+    XCTAssertEqual(self.store.item()?.generic, tag)
+  }
+
+  func test_set_willReuseTheInstallId() throws {
+    try self.subject.set(self.session("a"))
+    try self.storage("env-other").set(self.session("b"))
+    try self.subject.set(self.session("c"))
+
+    XCTAssertEqual(self.installIds.createCount, 1, "One id serves every write and every auth environment.")
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag)
+    XCTAssertEqual(self.store.item(service: self.service(for: "env-other"))?.generic, self.installIds.tag)
+  }
+
+  func test_getSession_willReturnTheSessionThisInstallPersisted() throws {
+    try self.subject.set(self.session("token"))
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("token"))
+    XCTAssertEqual(self.store.opCounts[.update], 0, "A tagged item is never re-tagged on read.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+  }
+
+  func test_getSession_willReturnNilAndKeepTheItem_afterReinstall() throws {
+    try self.subject.set(self.session("previous-install-token"))
+    let previousTag = self.installIds.tag
+    let reinstalledIds = InMemoryAuthInstallIdStore()
+    let reinstalled = self.reinstalledStorage(installIds: reinstalledIds)
+
+    XCTAssertNil(try reinstalled.getSession())
+    XCTAssertNil(try reinstalled.getSession(), "Every read ignores it, not just the first.")
+
+    XCTAssertEqual(self.store.item()?.generic, previousTag, "The item is ignored, not deleted or re-tagged.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+    XCTAssertEqual(self.store.opCounts[.update], 0)
+    XCTAssertNil(reinstalledIds.tag, "Reading must not create an install id.")
+  }
+
+  func test_getSession_willReturnNil_whenTaggedByAnotherInstall() throws {
+    self.installIds = InMemoryAuthInstallIdStore(id: "this-install")
+    self.subject = self.storage()
+    self.store.seed(data: self.session("token"), generic: Data("another-install".utf8))
+
+    XCTAssertNil(try self.subject.getSession())
+    XCTAssertNotNil(self.store.item())
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+  }
+
+  func test_getSession_willReturnNil_forAnotherInstallsEntry_evenWhenItIsUnparseable() throws {
+    // Whose it is decides first: another install's entry is left alone, parseable or not —
+    // whether this install has no id yet or a different one.
+    for installId in [nil, "this-install"] {
+      self.store.reset()
+      self.installIds = InMemoryAuthInstallIdStore(id: installId)
+      self.subject = self.storage()
+      self.store.seed(data: "not json", generic: Data("another-install".utf8))
+
+      XCTAssertNil(try self.subject.getSession(), "install id: \(installId ?? "none")")
+      XCTAssertEqual(self.store.item()?.string, "not json", "install id: \(installId ?? "none")")
+      XCTAssertEqual(self.store.opCounts[.delete], 0, "install id: \(installId ?? "none")")
+    }
+  }
+
+  func test_set_willThrowAndWriteNothing_whenTheInstallIdCannotBeRead() throws {
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "unreadable")
+
+    XCTAssertThrowsError(try self.subject.set(self.session("token"))) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertTrue(self.store.isEmpty)
+    XCTAssertEqual(self.store.opCounts[.add], 0)
+    XCTAssertEqual(self.installIds.createCount, 0, "An id that cannot be read must never be replaced by a new one.")
+  }
+
+  func test_getSession_willStillReturnAnUntaggedSession_whenTheInstallIdCannotBeRead() throws {
+    self.store.seed(data: self.session("legacy-token"))
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "unreadable")
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"), "Tagging is best effort; the session is still this install's.")
+    XCTAssertEqual(self.store.opCounts[.update], 0)
+    XCTAssertNil(self.store.item()?.generic)
+    XCTAssertTrue(self.logger.entries.contains { $0.level == .warn && $0.message.contains("could not be read or saved") })
+  }
+
+  func test_getSession_willLogAnotherInstallsSessionWithoutThePayload() throws {
+    try self.subject.set(self.session("secret-token-value"))
+
+    _ = try self.reinstalledStorage().getSession()
+
+    let lines = self.logger.messages
+    XCTAssertTrue(lines.contains { $0.contains("another install") }, "Reading as signed out must be logged.")
+    XCTAssertFalse(lines.contains { $0.contains("secret-token-value") }, "No log line may carry the token.")
+  }
+
+  func test_storage_whenTwoProcessesShareTheAccessGroup_theLastToSignInOwnsTheSession() throws {
+    // One slot per auth environment, as before this change; what changed is that the process that
+    // did not sign in last reads as signed out instead of using the other's session.
+    let app = self.reinstalledStorage(installIds: InMemoryAuthInstallIdStore())
+    let sibling = self.reinstalledStorage(installIds: InMemoryAuthInstallIdStore())
+
+    try app.set(self.session("app-token"))
+    try sibling.set(self.session("sibling-token"))
+
+    XCTAssertNil(try app.getSession(), "The sibling's sign-in took the slot.")
+    XCTAssertEqual(try sibling.getSession(), self.parsed("sibling-token"))
+    XCTAssertEqual(self.store.opCounts[.delete], 0, "Neither process deletes the other's session.")
+
+    try app.set(self.session("app-token-2"))
+
+    XCTAssertEqual(try app.getSession(), self.parsed("app-token-2"), "Signing in again takes it back.")
+    XCTAssertNil(try sibling.getSession())
+  }
+
+  func test_storage_willNotDeleteEachOthersSession_whenTwoProcessesShareTheAccessGroup() throws {
+    // A host whose first keychain-access-groups entry is shared with an extension: both processes
+    // see one item, each with its own container and so its own install id.
+    let appIds = InMemoryAuthInstallIdStore()
+    let extensionIds = InMemoryAuthInstallIdStore()
+    let app = self.reinstalledStorage(installIds: appIds)
+    let appExtension = self.reinstalledStorage(installIds: extensionIds)
+    try app.set(self.session("app-token"))
+
+    XCTAssertNil(try appExtension.getSession(), "The extension never uses the app's session.")
+    try appExtension.deleteIfCurrent("extension-token")
+
+    XCTAssertEqual(try app.getSession(), self.parsed("app-token"), "Neither read nor invalidate may sign the app out.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+    XCTAssertNil(extensionIds.tag)
+  }
+
+  func test_getSession_willThrowAndKeepItem_whenTheReadFails_withoutComparingTags() throws {
+    try self.subject.set(self.session("token"))
+    self.store.nextCopyStatuses = [errSecInteractionNotAllowed]
+    let reinstalledIds = InMemoryAuthInstallIdStore()
+
+    XCTAssertThrowsError(try self.reinstalledStorage(installIds: reinstalledIds).getSession()) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertNotNil(self.store.item(), "A locked Keychain is transient: the item must survive it.")
+    XCTAssertEqual(reinstalledIds.readCount, 0, "Nothing was read, so no tag may be compared.")
+  }
+
+  func test_set_afterReinstall_willReplaceAndRetagTheItem() throws {
+    try self.subject.set(self.session("old"))
+    let reinstalledIds = InMemoryAuthInstallIdStore()
+    let reinstalled = self.reinstalledStorage(installIds: reinstalledIds)
+
+    try reinstalled.set(self.session("new"))
+
+    XCTAssertEqual(self.store.item()?.generic, reinstalledIds.tag)
+    XCTAssertEqual(try reinstalled.getSession(), self.parsed("new"))
+    XCTAssertNil(try self.subject.getSession(), "Seen from the old install's id the item is now another install's.")
+  }
+
+  func test_getSession_willKeepAndTagAnUntaggedSession() throws {
+    // Written by an SDK version that did not tag sessions: an update and a reinstall look the
+    // same, and signing every user out on update is the worse outcome.
+    self.store.seed(data: self.session("legacy-token"))
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"))
+
+    let tag = try XCTUnwrap(self.installIds.tag, "Adopting the session creates this install's id.")
+    XCTAssertEqual(self.store.item()?.generic, tag)
+    let call = try XCTUnwrap(self.store.updateCalls.last)
+    XCTAssertEqual(call.query[kSecAttrService as String] as? String, self.expectedService)
+    XCTAssertEqual(call.query[kSecAttrAccount as String] as? String, KeychainAuthSessionStorage.accountName)
+    XCTAssertEqual(call.attributes.count, 1, "Tagging must change only the tag, never the session or its protection class.")
+    XCTAssertEqual(call.attributes[kSecAttrGeneric as String] as? Data, tag)
+    XCTAssertEqual(self.store.item()?.string, self.session("legacy-token"))
+  }
+
+  func test_getSession_willTreatAnEmptyTagAsUntagged() throws {
+    self.store.seed(data: self.session("legacy-token"), generic: Data())
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"), "An empty tag must never sign an updating user out.")
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag, "It is adopted like an untagged session.")
+  }
+
+  func test_getSession_afterAdoptingAnUntaggedSession_willReturnNilAfterReinstall() throws {
+    self.store.seed(data: self.session("legacy-token"))
+    _ = try self.subject.getSession()
+
+    XCTAssertNil(try self.reinstalledStorage().getSession())
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag, "Still the adopting install's item.")
+  }
+
+  func test_getSession_willStillReturnAnUntaggedSession_whenTaggingFails() throws {
+    self.store.seed(data: self.session("legacy-token"))
+    self.store.nextUpdateStatuses = [errSecInteractionNotAllowed]
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"))
+    XCTAssertNil(self.store.item()?.generic)
+    XCTAssertTrue(self.logger.entries.contains { $0.level == .warn && $0.message.contains("could not be tagged") })
+
+    // Retried on the next read.
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"))
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag)
+  }
+
+  func test_deleteIfCurrent_willSpareAnotherInstallsSession_whateverItsToken() throws {
+    try self.subject.set(self.session("token"))
+    let reinstalled = self.reinstalledStorage()
+
+    try reinstalled.deleteIfCurrent("token")
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("token"), "Not this install's to delete, even with the same token.")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+  }
+
+  func test_delete_willRemoveAnotherInstallsSession() throws {
+    // `clearPersistedSession()` still clears whatever is stored.
+    try self.subject.set(self.session("token"))
+
+    try self.reinstalledStorage().delete()
+
+    XCTAssertTrue(self.store.isEmpty)
+  }
+
+  func test_deleteIfCurrent_willDeleteAnUntaggedSessionWithoutTaggingIt() throws {
+    self.store.seed(data: self.session("legacy-token"))
+
+    try self.subject.deleteIfCurrent("legacy-token")
+
+    XCTAssertTrue(self.store.isEmpty)
+    XCTAssertEqual(self.store.opCounts[.update], 0)
+    XCTAssertNil(self.installIds.tag, "Deleting must not create an install id.")
+  }
+
+  func test_deleteIfCurrent_willSpareAnUntaggedNewerSessionWithoutTaggingIt() throws {
+    self.store.seed(data: self.session("newer-token"))
+
+    try self.subject.deleteIfCurrent("older-token")
+
+    XCTAssertEqual(self.store.item()?.string, self.session("newer-token"))
+    XCTAssertEqual(self.store.opCounts[.update], 0)
+  }
+
+  func test_deleteIfCurrent_willThrowAndKeepItem_whenTheInstallIdCannotBeRead() throws {
+    // Whose session it is cannot be decided, so it is not deleted blind — the same rule as a
+    // Keychain read that fails.
+    try self.subject.set(self.session("token"))
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "locked")
+
+    XCTAssertThrowsError(try self.subject.deleteIfCurrent("token")) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+
+    self.installIds.readError = nil
+    try self.subject.deleteIfCurrent("token")
+    XCTAssertTrue(self.store.isEmpty, "Once the id is readable the retry deletes it.")
+  }
+
+  func test_getSession_willThrowAndKeepItem_whenTheInstallIdCannotBeRead() throws {
+    // An id that exists but is unreadable right now (a transient read error) must not be read as
+    // a fresh install: that would read a session that belongs to this install as signed out.
+    try self.subject.set(self.session("token"))
+    self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "locked")
+
+    XCTAssertThrowsError(try self.subject.getSession()) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+
+    self.installIds.readError = nil
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("token"), "Once the id is readable the session is back.")
+  }
+
+  func test_set_willThrowAndWriteNothing_whenTheInstallIdCannotBeSaved() throws {
+    self.installIds.createError = CocoaError(.fileWriteOutOfSpace)
+
+    XCTAssertThrowsError(try self.subject.set(self.session("token"))) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertTrue(self.store.isEmpty, "An untagged write would be adopted by whichever install reads it next.")
+    XCTAssertEqual(self.store.opCounts[.add], 0)
+  }
+
+  func test_getSession_willStillReturnAnUntaggedSession_whenTheInstallIdCannotBeSaved() throws {
+    self.store.seed(data: self.session("legacy-token"))
+    self.installIds.createError = CocoaError(.fileWriteOutOfSpace)
+
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"))
+    XCTAssertNil(self.store.item()?.generic)
+    XCTAssertEqual(self.store.opCounts[.update], 0)
+
+    self.installIds.createError = nil
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("legacy-token"))
+    XCTAssertEqual(self.store.item()?.generic, self.installIds.tag, "Tagged on the next read.")
+  }
+
+  // MARK: - FileAuthInstallIdStore
+
+  /// A fresh base directory, removed after `body`.
+  private func withBaseDirectory(_ body: (URL) throws -> Void) throws {
+    let base = FileManager.default.temporaryDirectory
+      .appendingPathComponent("PortalSwiftTests.installId.\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: base) }
+    try body(base)
+  }
+
+  func test_fileInstallIdStore_willLiveUnderApplicationSupportByDefault() throws {
+    let ids = FileAuthInstallIdStore()
+
+    XCTAssertEqual(ids.fileURL.lastPathComponent, FileAuthInstallIdStore.fileName)
+    XCTAssertEqual(ids.fileURL.deletingLastPathComponent().lastPathComponent, FileAuthInstallIdStore.directoryName)
+    XCTAssertEqual(ids.fileURL.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent, "Application Support")
+  }
+
+  func test_fileInstallIdStore_willReturnNil_beforeTheIdIsCreated_withoutCreatingAnything() throws {
+    try self.withBaseDirectory { base in
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+
+      XCTAssertNil(try ids.current())
+      XCTAssertFalse(FileManager.default.fileExists(atPath: base.path), "current() must never create the id or its directory.")
+    }
+  }
+
+  func test_fileInstallIdStore_willCreateOnceAndKeepTheId() throws {
+    try self.withBaseDirectory { base in
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+
+      let created = try ids.currentOrCreate()
+
+      XCTAssertNotNil(UUID(uuidString: created))
+      XCTAssertEqual(try ids.current(), created)
+      XCTAssertEqual(try ids.currentOrCreate(), created)
+      XCTAssertEqual(try String(contentsOf: ids.fileURL, encoding: .utf8), created)
+      XCTAssertEqual(try FileAuthInstallIdStore(baseDirectory: base).current(), created, "Another instance reads the same id.")
+    }
+  }
+
+  func test_fileInstallIdStore_willReadAnEmptyFileAsNoId_andReplaceIt() throws {
+    try self.withBaseDirectory { base in
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+      try FileManager.default.createDirectory(at: ids.fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+      try Data(" \n".utf8).write(to: ids.fileURL)
+
+      XCTAssertNil(try ids.current())
+      let created = try ids.currentOrCreate()
+      XCTAssertEqual(try ids.current(), created)
+    }
+  }
+
+  func test_fileInstallIdStore_willThrow_whenTheIdExistsButCannotBeRead_andNeverReplaceIt() throws {
+    try self.withBaseDirectory { base in
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+      // A directory where the file should be: it exists, and reading it fails with an error other
+      // than "no such file".
+      try FileManager.default.createDirectory(at: ids.fileURL, withIntermediateDirectories: true)
+
+      XCTAssertThrowsError(try ids.current()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
+        XCTAssertFalse(message.contains(base.path), "The error must not carry the file path.")
+      }
+      // Failing on the read, not on a save, is what proves it never tried to replace the id: an
+      // atomic write onto this directory would fail too, so the check below alone could not tell.
+      XCTAssertThrowsError(try ids.currentOrCreate()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
+      }
+      var isDirectory: ObjCBool = false
+      XCTAssertTrue(FileManager.default.fileExists(atPath: ids.fileURL.path, isDirectory: &isDirectory))
+      XCTAssertTrue(isDirectory.boolValue, "An id that cannot be read must never be overwritten.")
+    }
+  }
+
+  func test_fileInstallIdStore_willThrow_whenTheIdFileIsNotReadable_andNeverReplaceIt() throws {
+    // A file the process may not read fails with a permission error (NSFileReadNoPermissionError),
+    // the error family a data-protected file gives when its class key is unavailable.
+    try self.withBaseDirectory { base in
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+      let created = try ids.currentOrCreate()
+      try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: ids.fileURL.path)
+      defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: ids.fileURL.path) }
+
+      XCTAssertThrowsError(try ids.current()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
+      }
+      XCTAssertThrowsError(try ids.currentOrCreate()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be read"), "Expected a read failure, got: \(message)")
+      }
+
+      try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: ids.fileURL.path)
+      XCTAssertEqual(try ids.current(), created, "The id must be unchanged once it is readable again.")
+    }
+  }
+
+  func test_fileInstallIdStore_willThrow_whenTheIdCannotBeSaved() throws {
+    try self.withBaseDirectory { base in
+      // A read-only base: the read finds no file (no id), and creating the directory then fails.
+      try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+      try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: base.path)
+      defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: base.path) }
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+
+      XCTAssertNil(try ids.current())
+      XCTAssertThrowsError(try ids.currentOrCreate()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be saved"), "Expected a save failure, got: \(message)")
+        XCTAssertFalse(message.contains(base.path), "The error must not carry the file path.")
+      }
+    }
+  }
+
+  func test_fileInstallIdStore_willThrow_whenAParentIsNotADirectory() throws {
+    try self.withBaseDirectory { base in
+      // A file where the directory should be: the path cannot be checked, so it is not "no id".
+      try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+      try Data("x".utf8).write(to: base.appendingPathComponent(FileAuthInstallIdStore.directoryName))
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+
+      XCTAssertThrowsError(try ids.current()) { error in
+        self.assertSessionStorageFailure(error)
+      }
+    }
+  }
+
+  func test_fileInstallIdStore_willCreateOneId_whenCreatingConcurrently() throws {
+    try self.withBaseDirectory { base in
+      let instances = (0 ..< 8).map { _ in FileAuthInstallIdStore(baseDirectory: base) }
+      let ids = IdSet()
+
+      DispatchQueue.concurrentPerform(iterations: 64) { index in
+        do {
+          try ids.insert(instances[index % instances.count].currentOrCreate())
+        } catch {
+          ids.recordFailure()
+        }
+      }
+
+      XCTAssertEqual(ids.failures, 0, "No caller may fail while another is creating the id.")
+      XCTAssertEqual(ids.values.count, 1)
+      XCTAssertEqual(try FileAuthInstallIdStore(baseDirectory: base).current(), ids.values.first)
+    }
+  }
+
+  func test_storage_withFileInstallIds_willStartSignedOutAfterReinstall() throws {
+    // End to end over the real file: deleting the app deletes the file, while the Keychain item
+    // survives.
+    try self.withBaseDirectory { base in
+      let storage = KeychainAuthSessionStorage(
+        authEnvironmentId: AuthTestFixtures.authEnvironmentId,
+        store: self.store,
+        installIds: FileAuthInstallIdStore(baseDirectory: base)
+      )
+      try storage.set(self.session("old-install-token"))
+      XCTAssertEqual(try storage.getSession(), self.parsed("old-install-token"))
+
+      try FileManager.default.removeItem(at: base)
+
+      XCTAssertNil(try storage.getSession())
+      XCTAssertFalse(FileManager.default.fileExists(atPath: base.path), "Reading must not create the id.")
+
+      // The reinstalled app's own sign-in replaces the leftover and is restored from then on.
+      try storage.set(self.session("new-install-token"))
+      XCTAssertEqual(try storage.getSession(), self.parsed("new-install-token"))
+    }
   }
 
   // MARK: - Error messages

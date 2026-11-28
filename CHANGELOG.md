@@ -12,6 +12,12 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+
+### Changed
+
+- Client Auth: a session saved by this version is not restored after the app is deleted and installed again, so `restoreSession()` returns `nil` and the reinstalled app starts signed out. Sessions saved by earlier versions are kept when the app is updated.
+
 ## 8.2.0 - 2026-11-23
 
 ### Added

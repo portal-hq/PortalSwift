@@ -769,10 +769,20 @@ public final class PortalAuth: @unchecked Sendable {
   /// **A session that cannot be recovered reads as `nil`, not as a failure.** An entry that
   /// will not parse is cleared by the storage layer and reported as "signed out": no caller
   /// action makes it readable, so failing the launch would only strand the app. Treat `nil` as
-  /// "show the sign-in screen". Note that Keychain items survive app deletion, so a
-  /// delete-and-reinstall can restore a still-live session from the previous install; hosts
-  /// that want a clean slate call `clearPersistedSession()` on first launch after install, before
-  /// starting any sign-in.
+  /// "show the sign-in screen".
+  ///
+  /// **A reinstall starts signed out.** Keychain items survive app deletion, so the session is
+  /// tied to this install of the app, recorded in `Library/Application Support/PortalSwift`: a
+  /// session persisted by an earlier install reads as `nil`, and so does one whose install record
+  /// the app deleted. It is never returned, and the next sign-in replaces it. A session persisted
+  /// by an SDK version that did not record the install is kept and tied to this install on the
+  /// first restore, so updating the app does not sign users out. Until that first restore such a
+  /// session is also restored after a reinstall; to rule that out, call `clearPersistedSession()`
+  /// on the first launch after install, before starting any sign-in.
+  ///
+  /// If the app shares its default Keychain access group with an extension or another app that
+  /// also signs in to this auth environment, they share one session slot: the last to sign in
+  /// keeps the session, and the other reads `nil` until it signs in again.
   ///
   /// Deliberately outside `grantMutex`. The read is atomic on its own — the storage serialises
   /// read, parse and self-heal under one lock — so it never observes a torn write. Ordering
@@ -786,7 +796,8 @@ public final class PortalAuth: @unchecked Sendable {
   /// `restoreSession` is likewise outside `grantLock`.
   ///
   /// - Throws: `PortalAuthError.sessionStorageFailure` when the session could not be read
-  ///   *this time* (a transient Keychain fault), or an unusable entry could not be cleared.
+  ///   *this time* (a transient Keychain fault, or an install record that exists but cannot be
+  ///   read), or an unusable entry could not be cleared.
   public func restoreSession() async throws -> PortalSession? {
     let persisted: PersistedSession?
     do {
