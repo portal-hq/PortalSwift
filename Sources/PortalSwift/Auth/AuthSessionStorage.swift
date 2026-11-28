@@ -248,9 +248,18 @@ final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
     }
 
     let created = UUID().uuidString
+    let directory = self.fileURL.deletingLastPathComponent()
     do {
+      // The parents (Application Support, which a fresh install may not have yet) are the host's:
+      // created without attributes so they keep the host's default protection, which new files
+      // in them can inherit. Only the SDK's own directory gets the explicit class.
       try self.fileManager.createDirectory(
-        at: self.fileURL.deletingLastPathComponent(),
+        at: directory.deletingLastPathComponent(),
+        withIntermediateDirectories: true,
+        attributes: nil
+      )
+      try self.fileManager.createDirectory(
+        at: directory,
         withIntermediateDirectories: true,
         attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
       )
