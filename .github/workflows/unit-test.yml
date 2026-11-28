@@ -22,6 +22,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-derived-data-
 
+      # The restored Derived Data still holds the coverage files of earlier runs. Codecov's uploader
+      # converts every Coverage.profdata it finds into the same report file, so the one it reaches
+      # last is the one it uploads, often an old one read against this run's binaries. Remove them so
+      # the upload only has this run's coverage.
+      - name: Remove coverage from earlier runs
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*/Build/ProfileData
+
       - name: Run Tests
         run: |
           xcodebuild -quiet -scheme Unit\ Tests -workspace .swiftpm/xcode/package.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,arch=arm64,name=iPhone 17' -resultBundlePath TestResults.xcresult
