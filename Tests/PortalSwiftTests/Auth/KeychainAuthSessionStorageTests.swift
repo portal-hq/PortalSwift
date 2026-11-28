@@ -1172,8 +1172,8 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   }
 
   func test_getSession_willThrowAndKeepItem_whenTheInstallIdCannotBeRead() throws {
-    // A host whose id exists but is unreadable right now (a locked device) must not be read as a
-    // fresh install: that would read a session that belongs to it as signed out.
+    // An id that exists but is unreadable right now (a transient read error) must not be read as
+    // a fresh install: that would read a session that belongs to this install as signed out.
     try self.subject.set(self.session("token"))
     self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "locked")
 
@@ -1265,8 +1265,8 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   func test_fileInstallIdStore_willThrow_whenTheIdExistsButCannotBeRead_andNeverReplaceIt() throws {
     try self.withBaseDirectory { base in
       let ids = FileAuthInstallIdStore(baseDirectory: base)
-      // A directory where the file should be: it exists, and reading it fails, as a protected file
-      // does while the device is locked.
+      // A directory where the file should be: it exists, and reading it fails with an error other
+      // than "no such file".
       try FileManager.default.createDirectory(at: ids.fileURL, withIntermediateDirectories: true)
 
       XCTAssertThrowsError(try ids.current()) { error in
@@ -1287,8 +1287,8 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
   }
 
   func test_fileInstallIdStore_willThrow_whenTheIdFileIsNotReadable_andNeverReplaceIt() throws {
-    // A file the process may not read fails with a permission error, the same error family a
-    // protected file gives while the device is locked.
+    // A file the process may not read fails with a permission error (NSFileReadNoPermissionError),
+    // the error family a data-protected file gives when its class key is unavailable.
     try self.withBaseDirectory { base in
       let ids = FileAuthInstallIdStore(baseDirectory: base)
       let created = try ids.currentOrCreate()

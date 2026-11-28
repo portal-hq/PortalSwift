@@ -177,8 +177,8 @@ final class SecItemAuthKeychainItemStore: AuthKeychainItemStore {
 /// item it finds carries a tag that does not match.
 ///
 /// "No id" and "the id cannot be read right now" must stay distinct: with no id a tagged session
-/// reads as signed out, so mistaking the second for the first would sign a user out because the
-/// device was locked.
+/// reads as signed out, so mistaking the second for the first would sign a user out over a
+/// transient read error.
 protocol AuthInstallIdStore: AnyObject {
   /// This install's id, or `nil` when this install has not created one yet. Never creates one.
   ///
@@ -205,8 +205,10 @@ protocol AuthInstallIdStore: AnyObject {
 /// its next launch reads as signed out — the session is ignored, never handed to the wrong
 /// install. A file that is empty or not UTF-8 is treated as no id for the same reason. A file
 /// that exists but cannot be read is not: `current()` throws `sessionStorageFailure`, a
-/// transient fault like a locked Keychain, and `currentOrCreate()` never replaces it, so a
-/// locked device never looks like a fresh install. Any other contents are used as the id as
+/// transient fault like a locked Keychain, and `currentOrCreate()` never replaces it, so a read
+/// error never looks like a fresh install. The file's protection class matches the session
+/// item's, so the device being locked is not one of those errors: before the first unlock the
+/// item read fails first, and after it both are readable. Any other contents are used as the id as
 /// they are: only this install writes the file, so they can match only a tag this install wrote.
 final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
   /// The directory under Application Support the id lives in.
@@ -348,7 +350,12 @@ final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
 /// no tag was written by an SDK version that did not tag sessions: an update and a reinstall
 /// look the same for it, so it is kept and tagged on the first `getSession()` (best effort; a
 /// failed tag is retried on the next read), which keeps app updates from signing users out.
-/// With a shared access group, whichever process reads an untagged item first tags it.
+/// With a shared access group, whichever process reads an untagged item first tags it; the
+/// tag-only update cannot be made conditional on the item it read, so a sibling's sign-in that
+/// lands between that read and the update keeps its session under the reader's tag. A sign-in
+/// through an SDK version that does not tag (a reinstall onto an older build) replaces the data
+/// but keeps whatever tag the item had, so after the next update to a tagging version that
+/// session reads as another install's and the user signs in once more.
 ///
 /// **Fault taxonomy.** `errSecItemNotFound` and an undecodable entry are permanent: the
 /// former reads as `nil`, the latter is deleted (self-heal) and then reads as `nil`, with a
@@ -513,7 +520,7 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     // fresh install after a deletion. This install must never use it, but it is not deleted:
     // the same tag mismatch is what a process sharing the access group sees. Checked before the
     // payload is decoded, because whether it parses does not matter here. An id that cannot be
-    // read throws, so a locked device never reads as a fresh install.
+    // read throws, so a read error never reads as a fresh install.
     if let installTag = installTag, try installTag != self.currentInstallTag() {
       self.logger.info("KeychainAuthSessionStorage.read() - The persisted session belongs to another install of this app; reading as signed out.")
       return .foreign

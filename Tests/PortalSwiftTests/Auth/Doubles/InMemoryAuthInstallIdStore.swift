@@ -13,7 +13,7 @@ import Foundation
 /// the test host's files. A reinstall is modelled by handing a storage a fresh,
 /// empty instance over the same `InMemoryAuthKeychainItemStore`: the Keychain item survives,
 /// the install id does not — as on a device. `readError` / `createError` script an id that
-/// exists but cannot be read (a locked device) and one that cannot be saved.
+/// exists but cannot be read (a transient read error) and one that cannot be saved.
 final class InMemoryAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
   private let lock = NSLock()
   private var id: String?
