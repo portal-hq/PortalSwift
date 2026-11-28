@@ -774,9 +774,13 @@ public final class PortalAuth: @unchecked Sendable {
   /// **A reinstall starts signed out.** Keychain items survive app deletion, so the session is
   /// tied to this install of the app, recorded in `Library/Application Support/PortalSwift`: a
   /// session persisted by an earlier install reads as `nil`, and so does one whose install record
-  /// the app deleted. It is never returned, and the next sign-in replaces it. A session persisted by an SDK version that did not record
-  /// the install is kept and tied to this install on the first restore, so updating the app does
-  /// not sign users out.
+  /// the app deleted. It is never returned, and the next sign-in replaces it. A session persisted
+  /// by an SDK version that did not record the install is kept and tied to this install on the
+  /// first restore, so updating the app does not sign users out.
+  ///
+  /// If the app shares its default Keychain access group with an extension or another app that
+  /// also signs in to this auth environment, they share one session slot: the last to sign in
+  /// keeps the session, and the other reads `nil` until it signs in again.
   ///
   /// Deliberately outside `grantMutex`. The read is atomic on its own — the storage serialises
   /// read, parse and self-heal under one lock — so it never observes a torn write. Ordering

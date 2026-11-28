@@ -1012,6 +1012,25 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertFalse(lines.contains { $0.contains("secret-token-value") }, "No log line may carry the token.")
   }
 
+  func test_storage_whenTwoProcessesShareTheAccessGroup_theLastToSignInOwnsTheSession() throws {
+    // One slot per auth environment, as before this change; what changed is that the process that
+    // did not sign in last reads as signed out instead of using the other's session.
+    let app = self.reinstalledStorage(installIds: InMemoryAuthInstallIdStore())
+    let sibling = self.reinstalledStorage(installIds: InMemoryAuthInstallIdStore())
+
+    try app.set(self.session("app-token"))
+    try sibling.set(self.session("sibling-token"))
+
+    XCTAssertNil(try app.getSession(), "The sibling's sign-in took the slot.")
+    XCTAssertEqual(try sibling.getSession(), self.parsed("sibling-token"))
+    XCTAssertEqual(self.store.opCounts[.delete], 0, "Neither process deletes the other's session.")
+
+    try app.set(self.session("app-token-2"))
+
+    XCTAssertEqual(try app.getSession(), self.parsed("app-token-2"), "Signing in again takes it back.")
+    XCTAssertNil(try sibling.getSession())
+  }
+
   func test_storage_willNotDeleteEachOthersSession_whenTwoProcessesShareTheAccessGroup() throws {
     // A host whose first keychain-access-groups entry is shared with an extension: both processes
     // see one item, each with its own container and so its own install id.

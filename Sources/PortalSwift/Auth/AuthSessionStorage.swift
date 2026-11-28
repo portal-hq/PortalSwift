@@ -327,8 +327,10 @@ final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
 /// `kSecAttrSynchronizable` and `kSecAttrAccessGroup` are never set, so the session never
 /// travels to iCloud and lands in the host's default access group: the first
 /// `keychain-access-groups` entry, else its app id. A host whose first entry is a group it
-/// shares with an extension or a sibling app exposes the item to them; they read it as another
-/// install's (see **One install**) and never delete it. `set(_:)` also carries the
+/// shares with an extension or a sibling app exposes the item to them, and there is still one
+/// session per auth environment between them: the process that signed in last owns it, and the
+/// other reads it as another install's (see **One install**), so as signed out, never deleting
+/// it, until it signs in again and takes the slot back. `set(_:)` also carries the
 /// accessibility attribute on the update path so an item written under a different
 /// protection class by an older build is migrated rather than silently preserved.
 ///
