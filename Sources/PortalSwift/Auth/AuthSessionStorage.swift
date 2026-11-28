@@ -273,15 +273,16 @@ final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
   // MARK: Un-locked body (caller holds `lock`)
 
   private func _current() throws -> String? {
-    // Whether the file exists is readable at any time; only its contents are protected.
-    guard self.fileManager.fileExists(atPath: self.fileURL.path) else {
-      return nil
-    }
-
+    // Read directly rather than checking `fileExists` first: that returns `false` for any failure
+    // to check, not only a missing file, and "no id" is the answer that ignores a tagged session.
+    // Only "no such file" means no id; every other failure is transient.
     let data: Data
     do {
       data = try Data(contentsOf: self.fileURL)
     } catch {
+      if Self.isNoSuchFile(error) {
+        return nil
+      }
       throw PortalAuthError.sessionStorageFailure(message: "This install's id could not be read (\(Self.describe(error))).")
     }
 
@@ -291,6 +292,15 @@ final class FileAuthInstallIdStore: AuthInstallIdStore, @unchecked Sendable {
       return nil
     }
     return value
+  }
+
+  /// `true` only for a file (or a parent directory) that does not exist.
+  private static func isNoSuchFile(_ error: Error) -> Bool {
+    let nsError = error as NSError
+    if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFileReadNoSuchFileError {
+      return true
+    }
+    return nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT)
   }
 
   /// The error's domain and code, never its path-bearing description.

@@ -1240,12 +1240,29 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
 
   func test_fileInstallIdStore_willThrow_whenTheIdCannotBeSaved() throws {
     try self.withBaseDirectory { base in
-      // A file where the directory should be, so the directory cannot be created.
+      // A read-only base: the read finds no file (no id), and creating the directory then fails.
+      try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+      try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: base.path)
+      defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: base.path) }
+      let ids = FileAuthInstallIdStore(baseDirectory: base)
+
+      XCTAssertNil(try ids.current())
+      XCTAssertThrowsError(try ids.currentOrCreate()) { error in
+        let message = self.assertSessionStorageFailure(error)
+        XCTAssertTrue(message.contains("could not be saved"), "Expected a save failure, got: \(message)")
+        XCTAssertFalse(message.contains(base.path), "The error must not carry the file path.")
+      }
+    }
+  }
+
+  func test_fileInstallIdStore_willThrow_whenAParentIsNotADirectory() throws {
+    try self.withBaseDirectory { base in
+      // A file where the directory should be: the path cannot be checked, so it is not "no id".
       try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
       try Data("x".utf8).write(to: base.appendingPathComponent(FileAuthInstallIdStore.directoryName))
       let ids = FileAuthInstallIdStore(baseDirectory: base)
 
-      XCTAssertThrowsError(try ids.currentOrCreate()) { error in
+      XCTAssertThrowsError(try ids.current()) { error in
         self.assertSessionStorageFailure(error)
       }
     }
