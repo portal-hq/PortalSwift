@@ -14,9 +14,12 @@ import Security
 /// `KeychainOAuthVerifierStorage` can be unit-tested without the simulator Keychain or an
 /// entitlement.
 ///
-/// Items are keyed by `(service, account)` and hold the data plus the accessibility attribute
-/// they were written with, so a test can prove a `set` migrated an item written under an older
-/// protection class. Every call computes the real `OSStatus` from the current state
+/// Items are keyed by `(service, account)` and hold the data plus the accessibility and
+/// `kSecAttrGeneric` attributes they were written with, so a test can prove a `set` migrated an
+/// item written under an older protection class or tagged it with the install id. A
+/// `copyMatching` that asks for attributes (`kSecReturnAttributes`) gets one dictionary holding
+/// those attributes and, when it also asks for data, `kSecValueData` — the shape
+/// `SecItemCopyMatching` returns. Every call computes the real `OSStatus` from the current state
 /// (`errSecItemNotFound`, `errSecDuplicateItem`, `errSecParam`, `errSecSuccess`) unless a
 /// status is **scripted**: `statusOverride` is consulted first, then the FIFO queues
 /// `nextCopyStatuses` / `nextAddStatuses` / `nextUpdateStatuses` / `nextDeleteStatuses`. A
@@ -57,6 +60,8 @@ final class InMemoryAuthKeychainItemStore: AuthKeychainItemStore, @unchecked Sen
     var data: Data
     /// The `kSecAttrAccessible` value the item carries, or `nil` when it was written without one.
     var accessible: String?
+    /// The `kSecAttrGeneric` value the item carries, or `nil` when it was written without one.
+    var generic: Data? = nil
 
     /// `data` as UTF-8 text, or `nil` when it is not valid UTF-8.
     var string: String? {
@@ -105,26 +110,35 @@ final class InMemoryAuthKeychainItemStore: AuthKeychainItemStore, @unchecked Sen
 
   // MARK: Seeding and inspection
 
-  /// Puts an item in the store directly, bypassing status computation and recording.
+  /// Puts an item in the store directly, bypassing status computation and recording. `generic`
+  /// defaults to `nil`: an item written before sessions were tagged with the install id.
   func seed(
     service: String = InMemoryAuthKeychainItemStore.defaultService,
     account: String = InMemoryAuthKeychainItemStore.defaultAccount,
     data: Data,
-    accessible: String? = InMemoryAuthKeychainItemStore.defaultAccessibility
+    accessible: String? = InMemoryAuthKeychainItemStore.defaultAccessibility,
+    generic: Data? = nil
   ) {
     self.lock.lock()
     defer { self.lock.unlock() }
-    self.items[ItemKey(service: service, account: account)] = StoredItem(service: service, account: account, data: data, accessible: accessible)
+    self.items[ItemKey(service: service, account: account)] = StoredItem(
+      service: service,
+      account: account,
+      data: data,
+      accessible: accessible,
+      generic: generic
+    )
   }
 
-  /// `seed(service:account:data:accessible:)` with `data` as the UTF-8 bytes of `string`.
+  /// `seed(service:account:data:accessible:generic:)` with `data` as the UTF-8 bytes of `string`.
   func seed(
     service: String = InMemoryAuthKeychainItemStore.defaultService,
     account: String = InMemoryAuthKeychainItemStore.defaultAccount,
     data string: String,
-    accessible: String? = InMemoryAuthKeychainItemStore.defaultAccessibility
+    accessible: String? = InMemoryAuthKeychainItemStore.defaultAccessibility,
+    generic: Data? = nil
   ) {
-    self.seed(service: service, account: account, data: Data(string.utf8), accessible: accessible)
+    self.seed(service: service, account: account, data: Data(string.utf8), accessible: accessible, generic: generic)
   }
 
   /// Every item currently stored, keyed by `(service, account)`.
@@ -370,8 +384,26 @@ final class InMemoryAuthKeychainItemStore: AuthKeychainItemStore, @unchecked Sen
       return (errSecItemNotFound, nil)
     }
     let wantsData = (query[kSecReturnData as String] as? Bool) == true
-    let value: CFTypeRef? = wantsData ? item.data as CFTypeRef : nil
-    return (errSecSuccess, value)
+    let wantsAttributes = (query[kSecReturnAttributes as String] as? Bool) == true
+    guard wantsAttributes else {
+      let value: CFTypeRef? = wantsData ? item.data as CFTypeRef : nil
+      return (errSecSuccess, value)
+    }
+    var attributes: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword as String,
+      kSecAttrService as String: item.service,
+      kSecAttrAccount as String: item.account
+    ]
+    if wantsData {
+      attributes[kSecValueData as String] = item.data
+    }
+    if let accessible = item.accessible {
+      attributes[kSecAttrAccessible as String] = accessible
+    }
+    if let generic = item.generic {
+      attributes[kSecAttrGeneric as String] = generic
+    }
+    return (errSecSuccess, attributes as CFDictionary)
   }
 
   func add(_ attributes: [String: Any]) -> OSStatus {
@@ -395,7 +427,8 @@ final class InMemoryAuthKeychainItemStore: AuthKeychainItemStore, @unchecked Sen
       service: key.service,
       account: key.account,
       data: data,
-      accessible: attributes[kSecAttrAccessible as String] as? String
+      accessible: attributes[kSecAttrAccessible as String] as? String,
+      generic: attributes[kSecAttrGeneric as String] as? Data
     )
     return errSecSuccess
   }
@@ -422,6 +455,9 @@ final class InMemoryAuthKeychainItemStore: AuthKeychainItemStore, @unchecked Sen
     }
     if let accessible = attributes[kSecAttrAccessible as String] as? String {
       item.accessible = accessible
+    }
+    if let generic = attributes[kSecAttrGeneric as String] as? Data {
+      item.generic = generic
     }
     self.items[key] = item
     return errSecSuccess

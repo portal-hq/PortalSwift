@@ -529,7 +529,11 @@ final class KeychainOAuthVerifierStorageTests: XCTestCase {
   }
 
   func test_storage_willNotTouchTheSessionItem() throws {
-    let sessionStorage = KeychainAuthSessionStorage(authEnvironmentId: AuthTestFixtures.authEnvironmentId, store: self.store)
+    let sessionStorage = KeychainAuthSessionStorage(
+      authEnvironmentId: AuthTestFixtures.authEnvironmentId,
+      store: self.store,
+      installIds: InMemoryAuthInstallIdStore()
+    )
     try sessionStorage.set(AuthTestFixtures.persistedSession())
     try self.subject.set(self.pending())
 
@@ -539,7 +543,11 @@ final class KeychainOAuthVerifierStorageTests: XCTestCase {
   }
 
   func test_storage_willSurviveTheSessionBeingDeleted() throws {
-    let sessionStorage = KeychainAuthSessionStorage(authEnvironmentId: AuthTestFixtures.authEnvironmentId, store: self.store)
+    let sessionStorage = KeychainAuthSessionStorage(
+      authEnvironmentId: AuthTestFixtures.authEnvironmentId,
+      store: self.store,
+      installIds: InMemoryAuthInstallIdStore()
+    )
     try sessionStorage.set(AuthTestFixtures.persistedSession())
     try self.subject.set(self.pending())
 
