@@ -19,7 +19,9 @@ import Foundation
 /// stops this instance handing out its token; the failure propagates as
 /// `PortalAuthError.sessionStorageFailure` so the caller knows a stale copy may remain on disk,
 /// and the delete is retried by the next `invalidate()` — the compare token is kept until the
-/// delete succeeds, so "already invalidated" is a no-op only once nothing is left on disk.
+/// delete succeeds, so "already invalidated" is a no-op only once nothing of this session's is
+/// left on disk, or what is on disk belongs to another install of the app and is not this
+/// session's to delete (it can never be restored here, and the next sign-in replaces it).
 /// `endUserId` stays readable after invalidation because hosts use it to key UI and per-user
 /// state during sign-out.
 ///

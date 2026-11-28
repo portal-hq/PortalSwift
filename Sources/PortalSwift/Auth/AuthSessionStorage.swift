@@ -18,8 +18,8 @@ import Security
 /// once against it and tested against an in-memory double. Two rules every implementation
 /// must keep, because the callers rely on them:
 ///
-/// - **Permanent faults self-heal, transient faults throw.** An entry that cannot be decoded
-///   is deleted and read as "signed out"; a backend that cannot be reached (a locked
+/// - **Permanent faults self-heal, transient faults throw.** An entry of this install's that
+///   cannot be decoded is deleted and read as "signed out"; a backend that cannot be reached (a locked
 ///   Keychain, a missing entitlement) throws and leaves the entry alone. Signing a user out
 ///   because the device happened to be locked would be a bug, not a recovery.
 /// - **`deleteIfCurrent(_:)` is one atomic compare-and-delete.** A stale session must never
@@ -42,7 +42,7 @@ protocol AuthSessionStorage: AnyObject {
   ///
   /// A stored session with a positively different token belongs to a newer login and is
   /// spared, and so is one tagged by another install of the app (the Keychain storage only).
-  /// An entry that cannot be decoded is cleared (that is a permanent fault). An entry
+  /// An entry of this install's that cannot be decoded is cleared (a permanent fault). An entry
   /// that cannot be *read* is left alone and the failure thrown: a transient fault has not said
   /// whether a newer login owns the slot, and deleting blind could erase that login's session.
   ///
@@ -176,8 +176,9 @@ final class SecItemAuthKeychainItemStore: AuthKeychainItemStore {
 /// storage the system deletes with the app, so a reinstall starts without one and the session
 /// item it finds carries a tag that does not match.
 ///
-/// "No id" and "the id cannot be read right now" must stay distinct: the first clears a tagged
-/// session, so mistaking the second for it would sign a user out because the device was locked.
+/// "No id" and "the id cannot be read right now" must stay distinct: with no id a tagged session
+/// reads as signed out, so mistaking the second for the first would sign a user out because the
+/// device was locked.
 protocol AuthInstallIdStore: AnyObject {
   /// This install's id, or `nil` when this install has not created one yet. Never creates one.
   ///
@@ -625,7 +626,8 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
   /// `baseQuery` asking for the item's data and attributes (for the install tag), which
   /// `SecItemCopyMatching` returns as one dictionary. It does not filter on accessibility, so
   /// an item written under an older protection class is still found (and migrated on the next
-  /// `set(_:)`), nor on the install tag, so another install's item is found and cleared.
+  /// `set(_:)`), nor on the install tag, so another install's item is found and read as signed
+  /// out rather than missed.
   private var readQuery: [String: Any] {
     var query = self.baseQuery
     query[kSecReturnData as String] = true

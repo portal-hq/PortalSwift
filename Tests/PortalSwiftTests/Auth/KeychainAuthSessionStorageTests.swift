@@ -370,7 +370,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertNil(query[kSecAttrSynchronizable as String])
     XCTAssertNil(query[kSecAttrAccessGroup as String])
     XCTAssertNil(query[kSecAttrAccessible as String], "Filtering the read by protection class would hide a migratable item.")
-    XCTAssertNil(query[kSecAttrGeneric as String], "Filtering the read by install tag would hide another install's item instead of clearing it.")
+    XCTAssertNil(query[kSecAttrGeneric as String], "Filtering the read by install tag would hide another install's item instead of reading it as signed out.")
   }
 
   func test_getSession_willFindItemWrittenUnderOlderProtectionClass() throws {
@@ -1171,7 +1171,7 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
 
   func test_getSession_willThrowAndKeepItem_whenTheInstallIdCannotBeRead() throws {
     // A host whose id exists but is unreadable right now (a locked device) must not be read as a
-    // fresh install: that would delete a session that belongs to it.
+    // fresh install: that would read a session that belongs to it as signed out.
     try self.subject.set(self.session("token"))
     self.installIds.readError = PortalAuthError.sessionStorageFailure(message: "locked")
 
